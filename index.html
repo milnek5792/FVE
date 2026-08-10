@@ -115,8 +115,12 @@
         </div>
     </div>
 
-    <script type="text/javascript">
+        <script type="text/javascript">
+        console.log("mqtt objekt:", mqtt);
+        console.log("mqtt.default:", mqtt.default);
+
         const EMQX_BROKER_URL = "wss://://emqxsl.com";
+
         const options = {
             clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
             username: "FVE1WebApp",
@@ -126,6 +130,7 @@
             clean: true
         };
 
+        console.log("Volám mqtt.default.connect...");
         const client = mqtt.default.connect(EMQX_BROKER_URL, options);
 
         function formatujCislo(hodnota) {
@@ -134,6 +139,7 @@
         }
 
         client.on('connect', () => {
+            console.log("MQTT connected");
             document.getElementById("status-text").innerText = "Online";
             document.getElementById("pod").style.backgroundColor = "#00ff08";
             document.getElementById("pod").style.boxShadow = "0 0 10px #00ff08";
@@ -147,19 +153,22 @@
             client.subscribe("fve/stav/rele2");
         });
 
-        client.on('error', () => {
+        client.on('error', (err) => {
+            console.error("MQTT error:", err);
             document.getElementById("status-text").innerText = "Chyba sítě";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('offline', () => {
+            console.log("MQTT offline");
             document.getElementById("status-text").innerText = "Odpojeno";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('reconnect', () => {
+            console.log("MQTT reconnecting");
             document.getElementById("status-text").innerText = "Připojování...";
             document.getElementById("pod").style.backgroundColor = "#ff9f43";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff9f43";
@@ -179,11 +188,13 @@
             }
             else if (topic === "fve/mereni/fvePower") {
                 const ciselnaHodnota = parseFloat(payload) || 0;
+                
                 if (ciselnaHodnota >= 1000) {
                     document.getElementById("fvePower").innerText = (ciselnaHodnota / 1000).toFixed(2) + " kW";
                 } else {
                     document.getElementById("fvePower").innerText = ciselnaHodnota.toFixed(0) + " W";
                 }
+
                 const maxVykon = 1350;
                 let procento = (ciselnaHodnota / maxVykon) * 100;
                 if (procento > 100) procento = 100;
