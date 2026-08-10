@@ -4,74 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE 1</title>
+    <!-- Načtení externího stylu -->
+    <link rel="stylesheet" href="style.css">
+    <!-- MQTT.js z CDN -->
     <script src="https://unpkg.com"></script>
-    <style>
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.04);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --glass-accent: #4a90e2;
-            --neon-green: #00ff88;
-            --neon-red: #ff2d55;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            background-color: #0b0f19; 
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(74, 144, 226, 0.15) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(0, 255, 136, 0.1) 0%, transparent 40%);
-            color: #ffffff; min-height: 100vh;
-        }
-        .header-bar { 
-            background: rgba(11, 15, 25, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            padding: 20px 15px; display: flex; align-items: center; justify-content: space-between; 
-            border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; z-index: 100;
-        }
-        .header-title { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.5px; }
-        .status-container {
-            display: flex; align-items: center; background: rgba(255, 255, 255, 0.05);
-            padding: 6px 12px; border-radius: 20px; border: 1px solid var(--glass-border);
-        }
-        .status-dot { 
-            width: 10px; height: 10px; background-color: #ff9f43; border-radius: 50%; 
-            display: inline-block; box-shadow: 0 0 10px #ff9f43; transition: all 0.3s ease;
-        }
-        .dashboard { padding: 15px; max-width: 500px; margin: 0 auto; }
-        .box { 
-            background: var(--glass-bg); border: 1px solid var(--glass-border);
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            padding: 16px 20px; margin-bottom: 12px; text-align: left; border-radius: 16px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-        .label { font-size: 0.85rem; color: #a0aec0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .value { font-size: 2.2rem; font-weight: 300; color: #ffffff; }
-        .value-small { font-size: 1.6rem; font-weight: 400; }
-        .box-highlight { background: rgba(74, 144, 226, 0.06); border: 1px solid rgba(74, 144, 226, 0.2); }
-        .bargraf-container { 
-            background-color: rgba(255, 255, 255, 0.08); width: 100%; height: 8px; 
-            margin-top: 15px; border-radius: 4px; overflow: hidden; position: relative;
-        }
-        .bargraf-fill { 
-            background: linear-gradient(90deg, #4a90e2, var(--neon-green)); width: 0%; height: 100%; 
-            border-radius: 4px; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 12px var(--glass-accent);
-        }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-        .grid-2 .box { margin-bottom: 0; display: flex; align-items: center; gap: 15px; padding: 14px 16px; }
-        .panel-icon-svg { width: 42px; height: 42px; transition: all 0.4s ease; filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5)); }
-        .panel-icon-svg path { fill: var(--neon-green); stroke: #0b0f19; stroke-width: 1; transition: all 0.4s ease; }
-        .panel-icon-svg.off { filter: drop-shadow(0 0 0px transparent); }
-        .panel-icon-svg.off path { fill: #334155; }
-        .btn-nulovani { 
-            background: linear-gradient(135deg, var(--neon-red), #b91c1c); color: white; border: none; padding: 15px; 
-            font-size: 1rem; font-weight: 700; width: 100%; height: 100%; display: flex; align-items: center; 
-            justify-content: center; cursor: pointer; text-transform: uppercase; border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(255, 45, 85, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);
-            box-sizing: border-box; transition: all 0.2s ease; letter-spacing: 0.5px;
-        }
-        .btn-nulovani:active { transform: scale(0.98); box-shadow: 0 2px 5px rgba(255, 45, 85, 0.2); background: linear-gradient(135deg, #d81b43, #991b1b); }
-    </style>
 </head>
 <body>
+
     <div class="header-bar">
         <div class="header-title">FVE 1</div>
         <div class="status-container">
@@ -79,26 +18,33 @@
             <div class="status-dot" id="pod"></div>
         </div>
     </div>
+
     <div class="dashboard">
         <div class="box">
             <div class="label">Vyrobeno celkem</div>
             <div class="value" id="totalEnergy">-- kWh</div>
         </div>
+
         <div class="box">
             <div class="label">Měsíční výroba</div>
             <div class="value-small" id="actualMonthEnergy">-- kWh</div>
         </div>
+
         <div class="box">
             <div class="label">Spotřeba domu</div>
             <div class="value-small" id="realPower">-- W</div>
         </div>
+
         <div class="box box-highlight">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
                 <div class="label">Aktuální výkon</div>
                 <div class="value-small" style="font-weight: 600;" id="fvePower">-- W</div>
             </div>
-            <div class="bargraf-container"><div class="bargraf-fill" id="fvePowerBargraf"></div></div>
+            <div class="bargraf-container">
+                <div class="bargraf-fill" id="fvePowerBargraf"></div>
+            </div>
         </div>
+
         <div class="grid-2">
             <div class="box">
                 <svg class="panel-icon-svg" id="icon-rele1" viewBox="0 0 24 24">
@@ -106,6 +52,7 @@
                 </svg>
                 <div class="label" style="color:white; margin:0; font-weight:500;">Fv panely 1</div>
             </div>
+
             <div class="box">
                 <svg class="panel-icon-svg" id="icon-rele2" viewBox="0 0 24 24">
                     <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zm-12 6h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/>
@@ -121,6 +68,7 @@
                     <div class="value-small" id="dailyEnergy">-- kWh</div>
                 </div>
             </div>
+
             <div style="padding:0; margin:0;">
                 <button class="btn-nulovani" onclick="provedNulovani()">✓ NULOVÁNÍ</button>
             </div>
@@ -128,11 +76,7 @@
     </div>
 
     <script type="text/javascript">
-        console.log("mqtt objekt:", mqtt);
-        console.log("mqtt.default:", mqtt.default);
-
         const EMQX_BROKER_URL = "wss://://emqxsl.com";
-
         const options = {
             clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
             username: "FVE1WebApp",
@@ -142,7 +86,6 @@
             clean: true
         };
 
-        console.log("Volám mqtt.default.connect...");
         const client = mqtt.default.connect(EMQX_BROKER_URL, options);
 
         function formatujCislo(hodnota) {
@@ -151,7 +94,6 @@
         }
 
         client.on('connect', () => {
-            console.log("MQTT connected");
             document.getElementById("status-text").innerText = "Online";
             document.getElementById("pod").style.backgroundColor = "#00ff08";
             document.getElementById("pod").style.boxShadow = "0 0 10px #00ff08";
@@ -166,21 +108,18 @@
         });
 
         client.on('error', (err) => {
-            console.error("MQTT error:", err);
             document.getElementById("status-text").innerText = "Chyba sítě";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('offline', () => {
-            console.log("MQTT offline");
             document.getElementById("status-text").innerText = "Odpojeno";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('reconnect', () => {
-            console.log("MQTT reconnecting");
             document.getElementById("status-text").innerText = "Připojování...";
             document.getElementById("pod").style.backgroundColor = "#ff9f43";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff9f43";
@@ -200,13 +139,11 @@
             }
             else if (topic === "fve/mereni/fvePower") {
                 const ciselnaHodnota = parseFloat(payload) || 0;
-                
                 if (ciselnaHodnota >= 1000) {
                     document.getElementById("fvePower").innerText = (ciselnaHodnota / 1000).toFixed(2) + " kW";
                 } else {
                     document.getElementById("fvePower").innerText = ciselnaHodnota.toFixed(0) + " W";
                 }
-
                 const maxVykon = 1350;
                 let procento = (ciselnaHodnota / maxVykon) * 100;
                 if (procento > 100) procento = 100;
