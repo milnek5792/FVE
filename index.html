@@ -250,25 +250,6 @@
         .btn-reset span.icon {
             font-size: 0.85rem;
         }
-
-        /* Když je výška menší (např. dělená obrazovka) – ještě víc utáhnout */
-        @media (max-height: 700px) {
-            body {
-                padding: 6px;
-            }
-            .app-container {
-                gap: 5px;
-            }
-            .glass-card {
-                padding: 8px 9px;
-            }
-            .power-value {
-                font-size: 1.9rem;
-            }
-            .topics-grid {
-                gap: 6px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -316,3 +297,18 @@
                 </div>
                 <div class="topic-card">
                     <div class="topic-label">Spotřeba domu</div>
+                    <div class="topic-val" id="realPower">-- W</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panely + nulování -->
+        <div class="glass-card">
+            <div class="panels-section">
+                <div class="panel-wrapper">
+                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
+                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm20-20a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm-34 0a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm26.728-11.728a3 3 0 0 1 0 4.243l-2.828 2.829a3 3 0 0 1-4.243-4.243l2.829-2.829a3 3 0 0 1 4.242 0zm-22.627 22.627a3 3 0 0 1 0 4.243l-2.829 2.829a3 3 0 0 1-4.242-4.243l2.828-2.829a3 3 0 0 1 4.243 0zm22.627 2.829a3 3 0 0 1-4.243 0l-2.829-2.829a3 3 0 0 1 4.243-4.243l2.829 2.829a3 3 0 0 1 0 4.243zm-22.627-22.627a3 3 0 0 1-4.243 0l-2.828-2.829a3 3 0 0 1 4.242-4.243l2.829 2.829a3 3 0 0 1 0 4.243z"/>
+                    </svg>
+                    <div class="panel-label">FV panely 1</div>
+                </div>
+
