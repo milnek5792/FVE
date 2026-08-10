@@ -12,8 +12,6 @@
         :root {
             --primary-glow: rgba(0, 242, 254, 0.15);
             --secondary-glow: rgba(79, 172, 254, 0.15);
-            --neon-green: #00ff88;
-            --neon-red: #ff2d55;
         }
 
         * {
@@ -202,15 +200,18 @@
         }
 
         .solar-icon {
-            width: 48px;
-            height: 48px;
+            width: 50px;
+            height: 50px;
             transition: all 0.3s ease;
             filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.5));
         }
-        /* tmavší zelená, výrazná mřížka */
-        .solar-icon .panel,
+        /* panel – tmavý rámeček */
+        .solar-icon .panel {
+            fill: #065f46; /* velmi tmavě zelená */
+        }
+        /* buňky – světlejší zelená, aby byla mřížka vidět */
         .solar-icon .cell {
-            fill: #15803d; /* tmavší zelená */
+            fill: #16a34a;
         }
         .solar-icon .sun {
             fill: #facc15;
@@ -340,20 +341,20 @@
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
                         <!-- slunce -->
-                        <circle class="sun" cx="49" cy="15" r="5"/>
+                        <circle class="sun" cx="50" cy="14" r="5"/>
                         <!-- panel základ -->
                         <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
                         <!-- mřížka: 3 sloupce × 3 řady -->
                         <!-- řada 1 -->
-                        <rect class="cell" x="8" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
                         <!-- řada 2 -->
-                        <rect class="cell" x="8" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="30" width="10" height="7" rx="1" ry="1"/>
                         <!-- řada 3 -->
-                        <rect class="cell" x="8" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="38" width="10" height="7" rx="1" ry="1"/>
                         <!-- nožky panelu -->
@@ -365,15 +366,15 @@
 
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
-                        <circle class="sun" cx="49" cy="15" r="5"/>
+                        <circle class="sun" cx="50" cy="14" r="5"/>
                         <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
-                        <rect class="cell" x="8" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
-                        <rect class="cell" x="8" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="30" width="10" height="7" rx="1" ry="1"/>
-                        <rect class="cell" x="8" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="panel" x="13" y="48" width="4" height="4"/>
