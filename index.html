@@ -201,13 +201,15 @@
             flex: 1;
         }
         .solar-icon {
-            width: 40px;
-            height: 40px;
+            width: 46px;
+            height: 46px;
             transition: all 0.3s ease;
             filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
         }
-        .solar-icon .panel {
-            fill: #22c55e;
+        /* tmavší zelená */
+        .solar-icon .panel,
+        .solar-icon .cell {
+            fill: #16a34a;
         }
         .solar-icon .sun {
             fill: #facc15;
@@ -215,7 +217,8 @@
         .solar-icon.off {
             filter: none;
         }
-        .solar-icon.off .panel {
+        .solar-icon.off .panel,
+        .solar-icon.off .cell {
             fill: #4b5563;
         }
         .solar-icon.off .sun {
@@ -283,195 +286,4 @@
     <div class="app-container">
         <header>
             <div class="header-row">
-                <div class="header-title">FVE 1</div>
-                <div class="status-bar">
-                    <span id="status-text">Připojování...</span>
-                    <span class="status-dot" id="pod"></span>
-                </div>
-            </div>
-        </header>
-
-        <!-- 1) Vyrobeno celkem -->
-        <div class="glass-card">
-            <div class="total-card">
-                <div class="total-label">Vyrobeno celkem</div>
-                <div class="total-value" id="totalEnergy">-- kWh</div>
-            </div>
-        </div>
-
-        <!-- 2) Aktuální výkon FVE -->
-        <div class="glass-card">
-            <div class="power-section">
-                <div class="power-title">Aktuální výkon FVE</div>
-                <div class="power-value">
-                    <span id="fvePower">--</span>
-                    <span class="power-unit">W</span>
-                </div>
-                <div class="bargraf-container">
-                    <div class="bargraf-fill" id="fvePowerBargraf"></div>
-                </div>
-                <div class="bargraf-labels">
-                    <span>0 W</span>
-                    <span>Max</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3) Měsíční výroba + spotřeba domu -->
-        <div class="glass-card">
-            <div class="topic-row">
-                <div class="topic-label">Měsíční výroba</div>
-                <div class="topic-val" id="actualMonthEnergy">-- kWh</div>
-            </div>
-            <div class="topic-row">
-                <div class="topic-label">Spotřeba domu</div>
-                <div class="topic-val" id="realPower">-- W</div>
-            </div>
-        </div>
-
-        <!-- 4) Panely + Denní výroba + nulování -->
-        <div class="glass-card">
-            <div class="panels-section">
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <circle class="sun" cx="45" cy="17" r="5"/>
-                        <rect class="panel" x="14" y="28" width="30" height="16" rx="2" ry="2"/>
-                        <rect class="panel" x="18" y="44" width="4" height="4"/>
-                        <rect class="panel" x="30" y="44" width="4" height="4"/>
-                    </svg>
-                    <div class="panel-label">FV panely 1</div>
-                </div>
-
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
-                        <circle class="sun" cx="45" cy="17" r="5"/>
-                        <rect class="panel" x="14" y="28" width="30" height="16" rx="2" ry="2"/>
-                        <rect class="panel" x="18" y="44" width="4" height="4"/>
-                        <rect class="panel" x="30" y="44" width="4" height="4"/>
-                    </svg>
-                    <div class="panel-label">FV panely 2</div>
-                </div>
-            </div>
-
-            <div class="bottom-row">
-                <div class="daily-row">
-                    <div class="daily-label">Denní výroba</div>
-                    <div class="daily-val" id="dailyEnergy">-- kWh</div>
-                </div>
-
-                <button class="btn-reset" onclick="provedNulovani()">
-                    <span class="icon">✓</span>
-                    <span>Nulování denní výroby</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script type="text/javascript">
-        // MQTT knihovna (podpora jak mqtt.default, tak mqtt)
-        window.mqttLib = (window.mqtt && window.mqtt.default) ? window.mqtt.default : window.mqtt;
-
-        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
-
-        const options = {
-            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
-            username: "FVE1WebApp",
-            password: "mmVHNn6bSLZ59Tw",
-            connectTimeout: 5000,
-            keepalive: 60,
-            clean: true
-        };
-
-        window.client = window.mqttLib.connect(EMQX_BROKER_URL, options);
-
-        client.on('connect', () => {
-            document.getElementById("status-text").innerText = "Online";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#00ff88";
-            dot.style.boxShadow = "0 0 6px #00ff88";
-
-            client.subscribe("fve/mereni/totalEnergy");
-            client.subscribe("fve/mereni/actualMonthEnergy");
-            client.subscribe("fve/mereni/realPower");
-            client.subscribe("fve/mereni/fvePower");
-            client.subscribe("fve/mereni/dailyEnergy");
-            client.subscribe("fve/stav/rele1");
-            client.subscribe("fve/stav/rele2");
-        });
-
-        client.on('error', () => {
-            document.getElementById("status-text").innerText = "Chyba sítě";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff2d55";
-            dot.style.boxShadow = "0 0 6px #ff2d55";
-        });
-
-        client.on('offline', () => {
-            document.getElementById("status-text").innerText = "Odpojeno";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff2d55";
-            dot.style.boxShadow = "0 0 6px #ff2d55";
-        });
-
-        client.on('reconnect', () => {
-            document.getElementById("status-text").innerText = "Připojování...";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff9f43";
-            dot.style.boxShadow = "0 0 6px #ff9f43";
-        });
-
-        function format0(x) {
-            const n = parseFloat(x);
-            if (isNaN(n)) return x;
-            return Math.round(n).toString();
-        }
-
-        client.on('message', (topic, message) => {
-            const payloadRaw = message.toString();
-
-            if (topic === "fve/mereni/totalEnergy") {
-                const v = format0(payloadRaw);
-                document.getElementById("totalEnergy").innerText = v + " kWh";
-            }
-            else if (topic === "fve/mereni/actualMonthEnergy") {
-                const v = format0(payloadRaw);
-                document.getElementById("actualMonthEnergy").innerText = v + " kWh";
-            }
-            else if (topic === "fve/mereni/realPower") {
-                const v = format0(payloadRaw);
-                document.getElementById("realPower").innerText = v + " W";
-            }
-            else if (topic === "fve/mereni/fvePower") {
-                const v = format0(payloadRaw);
-                document.getElementById("fvePower").innerText = v;
-                const maxVykon = 1350;
-                const ciselnaHodnota = parseFloat(v) || 0;
-                let procento = (ciselnaHodnota / maxVykon) * 100;
-                if (procento > 100) procento = 100;
-                document.getElementById("fvePowerBargraf").style.width = procento + "%";
-            }
-            else if (topic === "fve/mereni/dailyEnergy") {
-                document.getElementById("dailyEnergy").innerText = payloadRaw + " kWh";
-            }
-            else if (topic === "fve/stav/rele1") {
-                const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                document.getElementById("icon-rele1").classList.toggle("off", !on);
-            }
-            else if (topic === "fve/stav/rele2") {
-                const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                document.getElementById("icon-rele2").classList.toggle("off", !on);
-            }
-        });
-
-        function provedNulovani() {
-            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
-                if (client.connected) {
-                    client.publish("fve/prikazy", "reset_day");
-                } else {
-                    alert("Aplikace není připojena k brokeru!");
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                <div class="header-title">
