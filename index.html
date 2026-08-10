@@ -93,4 +93,101 @@
             </div>
 
             <div style="padding:0; margin:0;">
-                <button class="btn-n
+                <button class="btn-nulovani" onclick="provedNulovani()">✓ NULOVÁNÍ</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        console.log("mqtt objekt:", mqtt);
+        console.log("mqtt.default:", mqtt.default);
+
+        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
+
+        const options = {
+            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
+            username: "FVE1WebApp",
+            password: "mmVHNn6bSLZ59Tw",
+            connectTimeout: 5000,
+            keepalive: 60,
+            clean: true
+        };
+
+        console.log("Volám mqtt.default.connect...");
+        const client = mqtt.default.connect(EMQX_BROKER_URL, options);
+
+        client.on('connect', () => {
+            console.log("MQTT connected");
+            document.getElementById("status-text").innerText = "Online";
+            document.getElementById("pod").style.backgroundColor = "#00ff00";
+
+            client.subscribe("fve/mereni/totalEnergy");
+            client.subscribe("fve/mereni/actualMonthEnergy");
+            client.subscribe("fve/mereni/realPower");
+            client.subscribe("fve/mereni/fvePower");
+            client.subscribe("fve/mereni/dailyEnergy");
+            client.subscribe("fve/stav/rele1");
+            client.subscribe("fve/stav/rele2");
+        });
+
+        client.on('error', (err) => {
+            console.error("MQTT error:", err);
+            document.getElementById("status-text").innerText = "Chyba sítě";
+            document.getElementById("pod").style.backgroundColor = "#ff2d55";
+        });
+
+        client.on('offline', () => {
+            console.log("MQTT offline");
+            document.getElementById("status-text").innerText = "Odpojeno";
+            document.getElementById("pod").style.backgroundColor = "#ff2d55";
+        });
+
+        client.on('reconnect', () => {
+            console.log("MQTT reconnecting");
+            document.getElementById("status-text").innerText = "Připojování...";
+            document.getElementById("pod").style.backgroundColor = "#ff9f43";
+        });
+
+        client.on('message', (topic, message) => {
+            const payload = message.toString();
+
+            if (topic === "fve/mereni/totalEnergy") {
+                document.getElementById("totalEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/mereni/actualMonthEnergy") {
+                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/mereni/realPower") {
+                document.getElementById("realPower").innerText = payload + " W";
+            }
+            else if (topic === "fve/mereni/fvePower") {
+                document.getElementById("fvePower").innerText = payload + " W";
+                const maxVykon = 1350;
+                const ciselnaHodnota = parseFloat(payload) || 0;
+                let procento = (ciselnaHodnota / maxVykon) * 100;
+                if (procento > 100) procento = 100;
+                document.getElementById("fvePowerBargraf").style.width = procento + "%";
+            }
+            else if (topic === "fve/mereni/dailyEnergy") {
+                document.getElementById("dailyEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/stav/rele1") {
+                document.getElementById("icon-rele1").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
+            }
+            else if (topic === "fve/stav/rele2") {
+                document.getElementById("icon-rele2").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
+            }
+        });
+
+        function provedNulovani() {
+            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
+                if (client.connected) {
+                    client.publish("fve/prikazy", "reset_day");
+                } else {
+                    alert("Aplikace není připojena k brokeru!");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
