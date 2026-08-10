@@ -4,13 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE 1</title>
-    <!-- Načtení externího stylu -->
-    <link rel="stylesheet" href="style.css">
-    <!-- MQTT.js z CDN -->
     <script src="https://unpkg.com"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-green: #00ff88;
+            --neon-red: #ff2d55;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: #0b0f19; color: #ffffff; min-height: 100vh; 
+        }
+        .header-bar { 
+            background: rgba(11, 15, 25, 0.8); backdrop-filter: blur(10px);
+            padding: 20px 15px; display: flex; align-items: center; justify-content: space-between; 
+            border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; z-index: 100;
+        }
+        .header-title { font-size: 1.4rem; font-weight: 700; }
+        .status-container { display: flex; align-items: center; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 20px; }
+        .status-dot { width: 10px; height: 10px; background-color: #ff9f43; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #ff9f43; }
+        .dashboard { padding: 15px; max-width: 500px; margin: 0 auto; }
+        .box { 
+            background: var(--glass-bg); border: 1px solid var(--glass-border); backdrop-filter: blur(10px);
+            padding: 16px 20px; margin-bottom: 12px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .label { font-size: 0.85rem; color: #a0aec0; margin-bottom: 6px; text-transform: uppercase; }
+        .value { font-size: 2.2rem; font-weight: 300; }
+        .value-small { font-size: 1.6rem; }
+        .box-highlight { background: rgba(74, 144, 226, 0.08); border: 1px solid rgba(74, 144, 226, 0.3); }
+        .bargraf-container { background: rgba(255,255,255,0.1); width: 100%; height: 8px; margin-top: 15px; border-radius: 4px; overflow: hidden; }
+        .bargraf-fill { background: linear-gradient(90deg, #4a90e2, var(--neon-green)); width: 0%; height: 100%; transition: width 0.4s ease-out; box-shadow: 0 0 10px #4a90e2; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .grid-2 .box { margin-bottom: 0; display: flex; align-items: center; gap: 15px; padding: 14px 16px; }
+        .panel-icon-svg { width: 42px; height: 42px; transition: all 0.4s ease; filter: drop-shadow(0 0 8px rgba(0,255,136,0.5)); }
+        .panel-icon-svg path { fill: var(--neon-green); }
+        .panel-icon-svg.off path { fill: #334155; }
+        .panel-icon-svg.off { filter: none; }
+        .btn-nulovani { 
+            background: linear-gradient(135deg, var(--neon-red), #b91c1c); color: white; border: none; padding: 15px; 
+            font-size: 1rem; font-weight: 700; width: 100%; height: 100%; display: flex; align-items: center; 
+            justify-content: center; cursor: pointer; text-transform: uppercase; border-radius: 16px; box-shadow: 0 4px 15px rgba(255,45,85,0.3);
+        }
+        .btn-nulovani:active { transform: scale(0.98); background: #d81b43; }
+    </style>
 </head>
 <body>
-
     <div class="header-bar">
         <div class="header-title">FVE 1</div>
         <div class="status-container">
@@ -107,7 +147,7 @@
             client.subscribe("fve/stav/rele2");
         });
 
-        client.on('error', (err) => {
+        client.on('error', () => {
             document.getElementById("status-text").innerText = "Chyba sítě";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
             document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
