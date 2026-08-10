@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE 1</title>
-    
-    <!-- Stabilní knihovna MQTT.js z prověřeného CDN -->
-    <script src="https://cloudflare.com" type="text/javascript"></script>
-    
+
+    <!-- MQTT.js z CDN -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
     <style>
         body { font-family: sans-serif; background-color: #161616; color: #ffffff; margin: 0; padding: 0; box-sizing: border-box; }
         .header-bar { background-color: #4a90e2; padding: 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
@@ -45,14 +45,17 @@
             <div class="label">Vyrobeno celkem</div>
             <div class="value" id="totalEnergy">-- kWh</div>
         </div>
+
         <div class="box">
             <div class="label">Měsíční výroba</div>
             <div class="value-small" id="actualMonthEnergy">-- kWh</div>
         </div>
+
         <div class="box">
             <div class="label">Spotřeba domu</div>
             <div class="value-small" id="realPower">-- W</div>
         </div>
+
         <div class="box box-highlight">
             <div class="label" style="display:inline;">Aktuální výkon: </div>
             <div class="label" style="display:inline; color:white; font-size:1.05rem;" id="fvePower">-- W</div>
@@ -60,16 +63,27 @@
                 <div class="bargraf-fill" id="fvePowerBargraf"></div>
             </div>
         </div>
+
         <div class="grid-2">
             <div class="box">
-                <div class="panel-icon" id="icon-rele1"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="panel-icon" id="icon-rele1">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
                 <div class="label" style="color:white; margin:0;">Fv panely 1</div>
             </div>
+
             <div class="box">
-                <div class="panel-icon" id="icon-rele2"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="panel-icon" id="icon-rele2">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
                 <div class="label" style="color:white; margin:0;">Fv panely 2</div>
             </div>
         </div>
+
         <div class="grid-2">
             <div class="box">
                 <div>
@@ -77,90 +91,6 @@
                     <div class="value-small" id="dailyEnergy">-- kWh</div>
                 </div>
             </div>
+
             <div style="padding:0; margin:0;">
-                <button class="btn-nulovani" onclick="provedNulovani()">✓ NULOVÁNÍ</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ŽIVÁ LOGIKA MQTT PŘIPOJENÍ -->
-    <script type="text/javascript">
-        const EMQX_BROKER_URL = "wss://://emqxsl.com";
-
-        const options = {
-            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
-            username: "FVE1WebApp",
-            password: "mmVHNn6bSLZ59Tw", 
-            connectTimeout: 5000,
-            keepalive: 60,
-            clean: true
-        };
-
-        const client = mqtt.connect(EMQX_BROKER_URL, options);
-
-        client.on('connect', () => {
-            document.getElementById("status-text").innerText = "Online";
-            document.getElementById("pod").style.backgroundColor = "#00ff00";
-
-            client.subscribe("fve/mereni/totalEnergy");
-            client.subscribe("fve/mereni/actualMonthEnergy");
-            client.subscribe("fve/mereni/realPower");
-            client.subscribe("fve/mereni/fvePower");
-            client.subscribe("fve/mereni/dailyEnergy");
-            client.subscribe("fve/stav/rele1");
-            client.subscribe("fve/stav/rele2");
-        });
-
-        client.on('error', (err) => {
-            document.getElementById("status-text").innerText = "Chyba sítě";
-            document.getElementById("pod").style.backgroundColor = "#ff2d55";
-        });
-
-        client.on('offline', () => {
-            document.getElementById("status-text").innerText = "Odpojeno";
-            document.getElementById("pod").style.backgroundColor = "#ff2d55";
-        });
-
-        client.on('message', (topic, message) => {
-            const payload = message.toString();
-
-            if (topic === "fve/mereni/totalEnergy") {
-                document.getElementById("totalEnergy").innerText = payload + " kWh";
-            } 
-            else if (topic === "fve/mereni/actualMonthEnergy") {
-                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
-            } 
-            else if (topic === "fve/mereni/realPower") {
-                document.getElementById("realPower").innerText = payload + " W";
-            } 
-            else if (topic === "fve/mereni/fvePower") {
-                document.getElementById("fvePower").innerText = payload + " W";
-                const maxVykon = 1350; 
-                const ciselnaHodnota = parseFloat(payload) || 0;
-                let procento = (ciselnaHodnota / maxVykon) * 100;
-                if (procento > 100) procento = 100; 
-                document.getElementById("fvePowerBargraf").style.width = procento + "%";
-            } 
-            else if (topic === "fve/mereni/dailyEnergy") {
-                document.getElementById("dailyEnergy").innerText = payload + " kWh";
-            }
-            else if (topic === "fve/stav/rele1") {
-                document.getElementById("icon-rele1").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
-            } 
-            else if (topic === "fve/stav/rele2") {
-                document.getElementById("icon-rele2").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
-            }
-        });
-
-        function provedNulovani() {
-            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
-                if (client.connected) {
-                    client.publish("fve/prikazy", "reset_day");
-                } else {
-                    alert("Aplikace není připojena k brokeru!");
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                <button class="btn-n
