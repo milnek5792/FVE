@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE Kontrolní Panel</title>
 
-    <!-- MQTT.js z CDN -->
+    <!-- MUSÍ být před vlastním <script> kódem -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
     <style>
@@ -230,4 +230,73 @@
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
-            justify-content:
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-reset:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, rgba(255, 45, 85, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%);
+            border-color: rgba(255, 45, 85, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>FVE 1</h1>
+            <div class="status-bar">
+                <span id="status-text">Připojování...</span>
+                <span class="status-dot" id="pod"></span>
+            </div>
+        </header>
+
+        <!-- Hlavní výkon FV -->
+        <div class="glass-card">
+            <div class="power-section">
+                <div class="power-title">Aktuální výkon FVE</div>
+                <div class="power-value">
+                    <span id="fvePower">--</span>
+                    <span class="power-unit">W</span>
+                </div>
+                <div class="bargraf-container">
+                    <div class="bargraf-fill" id="fvePowerBargraf"></div>
+                </div>
+                <div class="bargraf-labels">
+                    <span>0 W</span>
+                    <span>Max</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ostatní hodnoty -->
+        <div class="glass-card">
+            <div class="topics-grid">
+                <div class="topic-card">
+                    <div class="topic-label">Vyrobeno celkem</div>
+                    <div class="topic-val" id="totalEnergy">-- kWh</div>
+                </div>
+                <div class="topic-card">
+                    <div class="topic-label">Měsíční výroba</div>
+                    <div class="topic-val" id="actualMonthEnergy">-- kWh</div>
+                </div>
+                <div class="topic-card">
+                    <div class="topic-label">Denní výroba</div>
+                    <div class="topic-val" id="dailyEnergy">-- kWh</div>
+                </div>
+                <div class="topic-card">
+                    <div class="topic-label">Spotřeba domu</div>
+                    <div class="topic-val" id="realPower">-- W</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panely a nulování -->
+        <div class="glass-card">
+            <div class="panels-section">
+                <div class="panel-wrapper">
+                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
+                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 
