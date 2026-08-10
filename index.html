@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FVE Kontrolní Panel – debug</title>
+    <title>FVE Kontrolní Panel</title>
 
-    <!-- MQTT.js z CDN – MUSÍ zůstat přesně takhle -->
+    <!-- MQTT.js z CDN -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
     <style>
@@ -25,7 +25,7 @@
         }
 
         body {
-            background-color: #0b0f19;
+            background-color: #030712; /* tmavší, méně rušivé pozadí */
             background-image:
                 radial-gradient(circle at 10% 20%, var(--primary-glow) 0%, transparent 40%),
                 radial-gradient(circle at 90% 80%, var(--secondary-glow) 0%, transparent 40%);
@@ -33,170 +33,172 @@
             color: #f1f5f9;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
+            justify-content: flex-start;
             align-items: center;
-            padding: 20px;
+            padding: 10px;
         }
 
         .app-container {
             width: 100%;
-            max-width: 480px;
+            max-width: 420px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            padding-bottom: 30px;
+            gap: 8px;
         }
 
         header {
             text-align: center;
-            margin: 10px 0 5px 0;
+            margin-bottom: 6px;
         }
 
         header h1 {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: 700;
             background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .status-bar {
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             font-weight: 500;
             color: #94a3b8;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         .status-dot {
-            width: 10px;
-            height: 10px;
+            width: 9px;
+            height: 9px;
             background-color: #ff9f43;
             border-radius: 50%;
             display: inline-block;
             margin-left: 6px;
-            box-shadow: 0 0 8px #ff9f43;
+            box-shadow: 0 0 6px #ff9f43;
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
         }
 
+        /* Hlavní výkon */
         .power-section {
             text-align: center;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 8px;
         }
 
         .power-title {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.7px;
             color: #94a3b8;
         }
 
         .power-value {
-            font-size: 3rem;
+            font-size: 2.2rem;
             font-weight: 800;
             color: #ffffff;
-            text-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
             display: flex;
             align-items: baseline;
             justify-content: center;
-            gap: 4px;
+            gap: 3px;
         }
 
         .power-unit {
-            font-size: 1.2rem;
+            font-size: 0.95rem;
             font-weight: 500;
             color: #4facfe;
         }
 
         .bargraf-container {
             width: 100%;
-            height: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 6px;
+            height: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 5px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            position: relative;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            margin-top: 4px;
         }
 
         .bargraf-fill {
             height: 100%;
             width: 0%;
             background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
-            box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
-            border-radius: 6px;
-            transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+            border-radius: 5px;
+            transition: width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         .bargraf-labels {
             display: flex;
             justify-content: space-between;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #64748b;
-            margin-top: -5px;
+            margin-top: 2px;
             padding: 0 2px;
         }
 
+        /* Měřené hodnoty */
         .topics-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 8px;
         }
 
         .topic-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 14px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(51, 65, 85, 0.9);
+            border-radius: 10px;
+            padding: 8px 9px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 2px;
         }
 
         .topic-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
+            font-size: 0.7rem;
+            color: #9ca3af;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
         }
 
         .topic-val {
-            font-size: 1.3rem;
-            font-weight: 400;
-            color: #f8fafc;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #e5e7eb;
         }
 
+        /* Panely */
         .panels-section {
             display: flex;
             justify-content: space-around;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .panel-wrapper {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
             flex: 1;
         }
 
         .solar-icon {
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             transition: all 0.3s ease;
-            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+            filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.5));
         }
 
         .solar-icon path {
@@ -209,38 +211,57 @@
         }
 
         .solar-icon.off path {
-            fill: #334155;
+            fill: #4b5563;
         }
 
         .panel-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
+            font-size: 0.7rem;
+            color: #9ca3af;
             font-weight: 500;
         }
 
+        /* Tlačítko nulování */
         .btn-reset {
             width: 100%;
-            background: linear-gradient(135deg, rgba(255, 45, 85, 0.1) 0%, rgba(185, 28, 28, 0.2) 100%);
-            border: 1px solid rgba(255, 45, 85, 0.2);
-            color: #fca5a5;
-            padding: 15px;
-            border-radius: 16px;
-            font-size: 0.95rem;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.08) 0%, rgba(185, 28, 28, 0.22) 100%);
+            border: 1px solid rgba(248, 113, 113, 0.6);
+            color: #fecaca;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
         }
 
         .btn-reset:active {
-            transform: scale(0.98);
-            background: linear-gradient(135deg, rgba(255, 45, 85, 0.2) 0%, rgba(185, 28, 28, 0.3) 100%);
-            border-color: rgba(255, 45, 85, 0.4);
+            transform: scale(0.97);
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.16) 0%, rgba(185, 28, 28, 0.3) 100%);
+            border-color: rgba(248, 113, 113, 0.8);
+        }
+
+        .btn-reset span.icon {
+            font-size: 0.9rem;
+        }
+
+        /* Trochu víc místa na malých výškách */
+        @media (max-height: 700px) {
+            body {
+                padding: 6px;
+            }
+            .app-container {
+                gap: 6px;
+            }
+            .glass-card {
+                padding: 10px 12px;
+            }
         }
     </style>
 </head>
@@ -250,178 +271,4 @@
             <h1>FVE 1</h1>
             <div class="status-bar">
                 <span id="status-text">Připojování...</span>
-                <span class="status-dot" id="pod"></span>
-            </div>
-        </header>
-
-        <div class="glass-card">
-            <div class="power-section">
-                <div class="power-title">Aktuální výkon FVE</div>
-                <div class="power-value">
-                    <span id="fvePower">--</span>
-                    <span class="power-unit">W</span>
-                </div>
-                <div class="bargraf-container">
-                    <div class="bargraf-fill" id="fvePowerBargraf"></div>
-                </div>
-                <div class="bargraf-labels">
-                    <span>0 W</span>
-                    <span>Max</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <div class="topics-grid">
-                <div class="topic-card">
-                    <div class="topic-label">Vyrobeno celkem</div>
-                    <div class="topic-val" id="totalEnergy">-- kWh</div>
-                </div>
-                <div class="topic-card">
-                    <div class="topic-label">Měsíční výroba</div>
-                    <div class="topic-val" id="actualMonthEnergy">-- kWh</div>
-                </div>
-                <div class="topic-card">
-                    <div class="topic-label">Denní výroba</div>
-                    <div class="topic-val" id="dailyEnergy">-- kWh</div>
-                </div>
-                <div class="topic-card">
-                    <div class="topic-label">Spotřeba domu</div>
-                    <div class="topic-val" id="realPower">-- W</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <div class="panels-section">
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm20-20a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm-34 0a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm26.728-11.728a3 3 0 0 1 0 4.243l-2.828 2.829a3 3 0 0 1-4.243-4.243l2.829-2.829a3 3 0 0 1 4.242 0zm-22.627 22.627a3 3 0 0 1 0 4.243l-2.829 2.829a3 3 0 0 1-4.242-4.243l2.828-2.829a3 3 0 0 1 4.243 0zm22.627 2.829a3 3 0 0 1-4.243 0l-2.829-2.829a3 3 0 0 1 4.243-4.243l2.829 2.829a3 3 0 0 1 0 4.243zm-22.627-22.627a3 3 0 0 1-4.243 0l-2.828-2.829a3 3 0 0 1 4.242-4.243l2.829 2.829a3 3 0 0 1 0 4.243z"/>
-                    </svg>
-                    <div class="panel-label">FV panely 1</div>
-                </div>
-
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
-                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm20-20a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm-34 0a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm26.728-11.728a3 3 0 0 1 0 4.243l-2.828 2.829a3 3 0 0 1-4.243-4.243l2.829-2.829a3 3 0 0 1 4.242 0zm-22.627 22.627a3 3 0 0 1 0 4.243l-2.829 2.829a3 3 0 0 1-4.242-4.243l2.828-2.829a3 3 0 0 1 4.243 0zm22.627 2.829a3 3 0 0 1-4.243 0l-2.829-2.829a3 3 0 0 1 4.243-4.243l2.829 2.829a3 3 0 0 1 0 4.243zm-22.627-22.627a3 3 0 0 1-4.243 0l-2.828-2.829a3 3 0 0 1 4.242-4.243l2.829 2.829a3 3 0 0 1 0 4.243z"/>
-                    </svg>
-                    <div class="panel-label">FV panely 2</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 16px;">
-                <button class="btn-reset" onclick="provedNulovani()">✓ Nulování denní výroby</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="text/javascript">
-        // DEBUG: co je v mqtt objektu
-        console.log("mqtt typeof:", typeof mqtt);
-        console.log("mqtt:", mqtt);
-
-        // Některé bundly mají vše v mqtt.default
-        const mqttLib = mqtt && mqtt.default ? mqtt.default : mqtt;
-        console.log("mqttLib typeof:", typeof mqttLib);
-        console.log("mqttLib:", mqttLib);
-
-        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
-
-        const options = {
-            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
-            username: "FVE1WebApp",
-            password: "mmVHNn6bSLZ59Tw",
-            connectTimeout: 5000,
-            keepalive: 60,
-            clean: true
-        };
-
-        console.log("Volám mqttLib.connect na:", EMQX_BROKER_URL, "s options:", options);
-        const client = mqttLib.connect(EMQX_BROKER_URL, options);
-
-        client.on('connect', () => {
-            console.log("EVENT: connect");
-            document.getElementById("status-text").innerText = "Online";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#00ff88";
-            dot.style.boxShadow = "0 0 8px #00ff88";
-
-            client.subscribe("fve/mereni/totalEnergy");
-            client.subscribe("fve/mereni/actualMonthEnergy");
-            client.subscribe("fve/mereni/realPower");
-            client.subscribe("fve/mereni/fvePower");
-            client.subscribe("fve/mereni/dailyEnergy");
-            client.subscribe("fve/stav/rele1");
-            client.subscribe("fve/stav/rele2");
-        });
-
-        client.on('error', (err) => {
-            console.error("EVENT: error", err);
-            document.getElementById("status-text").innerText = "Chyba sítě";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff2d55";
-            dot.style.boxShadow = "0 0 8px #ff2d55";
-        });
-
-        client.on('offline', () => {
-            console.warn("EVENT: offline");
-            document.getElementById("status-text").innerText = "Odpojeno";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff2d55";
-            dot.style.boxShadow = "0 0 8px #ff2d55";
-        });
-
-        client.on('reconnect', () => {
-            console.log("EVENT: reconnect");
-            document.getElementById("status-text").innerText = "Připojování...";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#ff9f43";
-            dot.style.boxShadow = "0 0 8px #ff9f43";
-        });
-
-        client.on('message', (topic, message) => {
-            const payload = message.toString();
-            console.log("EVENT: message", topic, payload);
-
-            if (topic === "fve/mereni/totalEnergy") {
-                document.getElementById("totalEnergy").innerText = payload + " kWh";
-            }
-            else if (topic === "fve/mereni/actualMonthEnergy") {
-                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
-            }
-            else if (topic === "fve/mereni/realPower") {
-                document.getElementById("realPower").innerText = payload + " W";
-            }
-            else if (topic === "fve/mereni/fvePower") {
-                document.getElementById("fvePower").innerText = payload;
-                const maxVykon = 1350;
-                const ciselnaHodnota = parseFloat(payload) || 0;
-                let procento = (ciselnaHodnota / maxVykon) * 100;
-                if (procento > 100) procento = 100;
-                document.getElementById("fvePowerBargraf").style.width = procento + "%";
-            }
-            else if (topic === "fve/mereni/dailyEnergy") {
-                document.getElementById("dailyEnergy").innerText = payload + " kWh";
-            }
-            else if (topic === "fve/stav/rele1") {
-                const on = !(payload === "0" || payload.toUpperCase() === "OFF");
-                document.getElementById("icon-rele1").classList.toggle("off", !on);
-            }
-            else if (topic === "fve/stav/rele2") {
-                const on = !(payload === "0" || payload.toUpperCase() === "OFF");
-                document.getElementById("icon-rele2").classList.toggle("off", !on);
-            }
-        });
-
-        function provedNulovani() {
-            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
-                if (client.connected) {
-                    client.publish("fve/prikazy", "reset_day");
-                } else {
-                    alert("Aplikace není připojena k brokeru!");
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                <span class="status-dot" id="pod"></
