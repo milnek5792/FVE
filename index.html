@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE 1</title>
+
+    <!-- PŮVODNÍ FUNKČNÍ NAČTENÍ MQTT KNIHOVNY -->
     <script src="https://unpkg.com"></script>
+
     <style>
         :root {
             --glass-bg: rgba(255, 255, 255, 0.05);
@@ -51,10 +54,11 @@
     </style>
 </head>
 <body>
+
     <div class="header-bar">
-        <div class="header-title">FVE 1</div>
-        <div class="status-container">
-            <span id="status-text" style="font-size: 0.8rem; margin-right: 8px; color: #cbd5e1; font-weight: 500;">Připojování...</span>
+        <div class="header-title"><span>FVE 1</span></div>
+        <div>
+            <span id="status-text" style="font-size: 0.8rem; margin-right: 8px; color: #eee;">Připojování...</span>
             <div class="status-dot" id="pod"></div>
         </div>
     </div>
@@ -76,10 +80,8 @@
         </div>
 
         <div class="box box-highlight">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <div class="label">Aktuální výkon</div>
-                <div class="value-small" style="font-weight: 600;" id="fvePower">-- W</div>
-            </div>
+            <div class="label" style="display:inline;">Aktuální výkon: </div>
+            <div class="label" style="display:inline; color:white; font-size:1.05rem;" id="fvePower">-- W</div>
             <div class="bargraf-container">
                 <div class="bargraf-fill" id="fvePowerBargraf"></div>
             </div>
@@ -90,14 +92,14 @@
                 <svg class="panel-icon-svg" id="icon-rele1" viewBox="0 0 24 24">
                     <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zm-12 6h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/>
                 </svg>
-                <div class="label" style="color:white; margin:0; font-weight:500;">Fv panely 1</div>
+                <div class="label" style="color:white; margin:0;">Fv panely 1</div>
             </div>
 
             <div class="box">
                 <svg class="panel-icon-svg" id="icon-rele2" viewBox="0 0 24 24">
                     <path d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4zm-12 6h4v4H4v-4zm6 0h4v4h-4v-4zm6 0h4v4h-4v-4z"/>
                 </svg>
-                <div class="label" style="color:white; margin:0; font-weight:500;">Fv panely 2</div>
+                <div class="label" style="color:white; margin:0;">Fv panely 2</div>
             </div>
         </div>
 
@@ -115,7 +117,7 @@
         </div>
     </div>
 
-        <script type="text/javascript">
+    <script type="text/javascript">
         console.log("mqtt objekt:", mqtt);
         console.log("mqtt.default:", mqtt.default);
 
@@ -133,16 +135,10 @@
         console.log("Volám mqtt.default.connect...");
         const client = mqtt.default.connect(EMQX_BROKER_URL, options);
 
-        function formatujCislo(hodnota) {
-            const cislo = parseFloat(hodnota);
-            return isNaN(cislo) ? hodnota : cislo.toFixed(1);
-        }
-
         client.on('connect', () => {
             console.log("MQTT connected");
             document.getElementById("status-text").innerText = "Online";
-            document.getElementById("pod").style.backgroundColor = "#00ff08";
-            document.getElementById("pod").style.boxShadow = "0 0 10px #00ff08";
+            document.getElementById("pod").style.backgroundColor = "#00ff00";
 
             client.subscribe("fve/mereni/totalEnergy");
             client.subscribe("fve/mereni/actualMonthEnergy");
@@ -157,59 +153,48 @@
             console.error("MQTT error:", err);
             document.getElementById("status-text").innerText = "Chyba sítě";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
-            document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('offline', () => {
             console.log("MQTT offline");
             document.getElementById("status-text").innerText = "Odpojeno";
             document.getElementById("pod").style.backgroundColor = "#ff2d55";
-            document.getElementById("pod").style.boxShadow = "0 0 10px #ff2d55";
         });
 
         client.on('reconnect', () => {
             console.log("MQTT reconnecting");
             document.getElementById("status-text").innerText = "Připojování...";
             document.getElementById("pod").style.backgroundColor = "#ff9f43";
-            document.getElementById("pod").style.boxShadow = "0 0 10px #ff9f43";
         });
 
         client.on('message', (topic, message) => {
             const payload = message.toString();
 
             if (topic === "fve/mereni/totalEnergy") {
-                document.getElementById("totalEnergy").innerText = formatujCislo(payload) + " kWh";
+                document.getElementById("totalEnergy").innerText = payload + " kWh";
             }
             else if (topic === "fve/mereni/actualMonthEnergy") {
-                document.getElementById("actualMonthEnergy").innerText = formatujCislo(payload) + " kWh";
+                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
             }
             else if (topic === "fve/mereni/realPower") {
-                document.getElementById("realPower").innerText = formatujCislo(payload) + " W";
+                document.getElementById("realPower").innerText = payload + " W";
             }
             else if (topic === "fve/mereni/fvePower") {
-                const ciselnaHodnota = parseFloat(payload) || 0;
-                
-                if (ciselnaHodnota >= 1000) {
-                    document.getElementById("fvePower").innerText = (ciselnaHodnota / 1000).toFixed(2) + " kW";
-                } else {
-                    document.getElementById("fvePower").innerText = ciselnaHodnota.toFixed(0) + " W";
-                }
-
+                document.getElementById("fvePower").innerText = payload + " W";
                 const maxVykon = 1350;
+                const ciselnaHodnota = parseFloat(payload) || 0;
                 let procento = (ciselnaHodnota / maxVykon) * 100;
                 if (procento > 100) procento = 100;
                 document.getElementById("fvePowerBargraf").style.width = procento + "%";
             }
             else if (topic === "fve/mereni/dailyEnergy") {
-                document.getElementById("dailyEnergy").innerText = formatujCislo(payload) + " kWh";
+                document.getElementById("dailyEnergy").innerText = payload + " kWh";
             }
             else if (topic === "fve/stav/rele1") {
-                const isOff = (payload === "0" || payload.toUpperCase() === "OFF");
-                document.getElementById("icon-rele1").classList.toggle("off", isOff);
+                document.getElementById("icon-rele1").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
             }
             else if (topic === "fve/stav/rele2") {
-                const isOff = (payload === "0" || payload.toUpperCase() === "OFF");
-                document.getElementById("icon-rele2").classList.toggle("off", isOff);
+                document.getElementById("icon-rele2").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
             }
         });
 
