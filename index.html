@@ -93,6 +93,27 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
         }
 
+        /* Vyrobeno celkem – zvýrazněná karta */
+        .total-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .total-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+        }
+
+        .total-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #e5e7eb;
+        }
+
+        /* Hlavní výkon */
         .power-section {
             text-align: center;
             display: flex;
@@ -173,220 +194,3 @@
 
         .topic-val {
             font-size: 1rem;
-            font-weight: 500;
-            color: #e5e7eb;
-        }
-
-        .panels-section {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .panel-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            flex: 1;
-        }
-
-        .solar-icon {
-            width: 40px;
-            height: 40px;
-            transition: all 0.3s ease;
-            filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
-        }
-
-        .solar-icon .panel {
-            fill: #22c55e;
-        }
-
-        .solar-icon .sun {
-            fill: #facc15;
-        }
-
-        .solar-icon.off {
-            filter: none;
-        }
-
-        .solar-icon.off .panel {
-            fill: #4b5563;
-        }
-
-        .solar-icon.off .sun {
-            fill: #6b7280;
-        }
-
-        .panel-label {
-            font-size: 0.7rem;
-            color: #9ca3af;
-            font-weight: 500;
-        }
-
-        .bottom-row {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .daily-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            font-size: 0.9rem;
-        }
-
-        .daily-label {
-            font-size: 0.78rem;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .daily-val {
-            font-size: 1rem;
-            font-weight: 500;
-            color: #e5e7eb;
-        }
-
-        .btn-reset {
-            width: 100%;
-            background: linear-gradient(135deg, rgba(248, 113, 113, 0.08) 0%, rgba(185, 28, 28, 0.22) 100%);
-            border: 1px solid rgba(248, 113, 113, 0.6);
-            color: #fecaca;
-            padding: 9px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .btn-reset:active {
-            transform: scale(0.97);
-            background: linear-gradient(135deg, rgba(248, 113, 113, 0.16) 0%, rgba(185, 28, 28, 0.3) 100%);
-            border-color: rgba(248, 113, 113, 0.8);
-        }
-
-        .btn-reset span.icon {
-            font-size: 0.9rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="app-container">
-        <header>
-            <div class="header-row">
-                <div class="header-title">FVE 1</div>
-                <div class="status-bar">
-                    <span id="status-text">Připojování...</span>
-                    <span class="status-dot" id="pod"></span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Hlavní výkon FVE -->
-        <div class="glass-card">
-            <div class="power-section">
-                <div class="power-title">Aktuální výkon FVE</div>
-                <div class="power-value">
-                    <span id="fvePower">--</span>
-                    <span class="power-unit">W</span>
-                </div>
-                <div class="bargraf-container">
-                    <div class="bargraf-fill" id="fvePowerBargraf"></div>
-                </div>
-                <div class="bargraf-labels">
-                    <span>0 W</span>
-                    <span>Max</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Výroby a spotřeba (Vyrobeno celkem jako první) -->
-        <div class="glass-card">
-            <div class="topic-row">
-                <div class="topic-label">Vyrobeno celkem</div>
-                <div class="topic-val" id="totalEnergy">-- kWh</div>
-            </div>
-            <div class="topic-row">
-                <div class="topic-label">Měsíční výroba</div>
-                <div class="topic-val" id="actualMonthEnergy">-- kWh</div>
-            </div>
-            <div class="topic-row">
-                <div class="topic-label">Spotřeba domu</div>
-                <div class="topic-val" id="realPower">-- W</div>
-            </div>
-        </div>
-
-        <!-- Panely + Denní výroba + nulování -->
-        <div class="glass-card">
-            <div class="panels-section">
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <circle class="sun" cx="45" cy="17" r="5"/>
-                        <rect class="panel" x="12" y="30" width="32" height="16" rx="2" ry="2" transform="skewX(-10)"/>
-                        <rect class="panel" x="16" y="46" width="4" height="4"/>
-                        <rect class="panel" x="30" y="46" width="4" height="4"/>
-                    </svg>
-                    <div class="panel-label">FV panely 1</div>
-                </div>
-
-                <div class="panel-wrapper">
-                    <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
-                        <circle class="sun" cx="45" cy="17" r="5"/>
-                        <rect class="panel" x="12" y="30" width="32" height="16" rx="2" ry="2" transform="skewX(-10)"/>
-                        <rect class="panel" x="16" y="46" width="4" height="4"/>
-                        <rect class="panel" x="30" y="46" width="4" height="4"/>
-                    </svg>
-                    <div class="panel-label">FV panely 2</div>
-                </div>
-            </div>
-
-            <div class="bottom-row">
-                <div class="daily-row">
-                    <div class="daily-label">Denní výroba</div>
-                    <div class="daily-val" id="dailyEnergy">-- kWh</div>
-                </div>
-
-                <button class="btn-reset" onclick="provedNulovani()">
-                    <span class="icon">✓</span>
-                    <span>Nulování denní výroby</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script type="text/javascript">
-        // MQTT knihovna (podpora jak mqtt.default, tak mqtt)
-        window.mqttLib = (window.mqtt && window.mqtt.default) ? window.mqtt.default : window.mqtt;
-
-        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
-
-        const options = {
-            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
-            username: "FVE1WebApp",
-            password: "mmVHNn6bSLZ59Tw",
-            connectTimeout: 5000,
-            keepalive: 60,
-            clean: true
-        };
-
-        window.client = window.mqttLib.connect(EMQX_BROKER_URL, options);
-
-        client.on('connect', () => {
-            document.getElementById("status-text").innerText = "Online";
-            const dot = document.getElementById("pod");
-            dot.style.backgroundColor = "#00ff88";
-            dot.style.boxShadow = "0 0 6px #00ff88";
-
-            client.subscribe("fve/
