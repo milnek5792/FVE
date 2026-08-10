@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FVE 1</title>
+    
+    <!-- Stabilní knihovna MQTT.js z prověřeného CDN -->
+    <script src="https://cloudflare.com" type="text/javascript"></script>
+    
+    <style>
+        body { font-family: sans-serif; background-color: #161616; color: #ffffff; margin: 0; padding: 0; box-sizing: border-box; }
+        .header-bar { background-color: #4a90e2; padding: 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .header-title { font-size: 1.3rem; font-weight: bold; }
+        .status-dot { width: 12px; height: 12px; background-color: #ff9f43; border-radius: 50%; display: inline-block; }
+        .dashboard { padding: 10px; max-width: 500px; margin: 0 auto; }
+        .box { background-color: #1a1a1a; border: 1px solid #333333; padding: 12px 15px; margin-bottom: 8px; text-align: left; }
+        .label { font-size: 0.95rem; color: #aaaaaa; margin-bottom: 5px; }
+        .value { font-size: 1.8rem; font-weight: normal; }
+        .value-small { font-size: 1.3rem; }
+        .box-highlight { padding-bottom: 18px; }
+        .bargraf-container { background-color: #2a2a2a; width: 100%; height: 6px; margin-top: 12px; border-radius: 3px; overflow: hidden; }
+        .bargraf-fill { background-color: #4a90e2; width: 0%; height: 100%; border-radius: 3px; transition: width 0.5s ease-in-out; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .grid-2 .box { margin-bottom: 0; display: flex; align-items: center; gap: 15px; }
+        .panel-icon { display: grid; grid-template-columns: repeat(3, 8px); gap: 3px; }
+        .panel-icon span { width: 8px; height: 8px; background-color: #00ff00; border-radius: 1px; }
+        .panel-icon.off span { background-color: #444444; }
+        .btn-nulovani { background-color: #ff2d55; color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; cursor: pointer; text-transform: uppercase; border: 1px solid #333333; box-sizing: border-box; }
+        .btn-nulovani:active { background-color: #d81b43; }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div class="header-title"><span>FVE 1</span></div>
+        <div>
+            <span id="status-text" style="font-size: 0.8rem; margin-right: 8px; color: #eee;">Připojování...</span>
+            <div class="status-dot" id="pod"></div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="box">
+            <div class="label">Vyrobeno celkem</div>
+            <div class="value" id="totalEnergy">-- kWh</div>
+        </div>
+        <div class="box">
+            <div class="label">Měsíční výroba</div>
+            <div class="value-small" id="actualMonthEnergy">-- kWh</div>
+        </div>
+        <div class="box">
+            <div class="label">Spotřeba domu</div>
+            <div class="value-small" id="realPower">-- W</div>
+        </div>
+        <div class="box box-highlight">
+            <div class="label" style="display:inline;">Aktuální výkon: </div>
+            <div class="label" style="display:inline; color:white; font-size:1.05rem;" id="fvePower">-- W</div>
+            <div class="bargraf-container">
+                <div class="bargraf-fill" id="fvePowerBargraf"></div>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="box">
+                <div class="panel-icon" id="icon-rele1"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="label" style="color:white; margin:0;">Fv panely 1</div>
+            </div>
+            <div class="box">
+                <div class="panel-icon" id="icon-rele2"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="label" style="color:white; margin:0;">Fv panely 2</div>
+            </div>
+        </div>
+        <div class="grid-2">
+            <div class="box">
+                <div>
+                    <div class="label">Denní výroba</div>
+                    <div class="value-small" id="dailyEnergy">-- kWh</div>
+                </div>
+            </div>
+            <div style="padding:0; margin:0;">
+                <button class="btn-nulovani" onclick="provedNulovani()">✓ NULOVÁNÍ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ŽIVÁ LOGIKA MQTT PŘIPOJENÍ -->
+    <script type="text/javascript">
+        const EMQX_BROKER_URL = "wss://://emqxsl.com";
+
+        const options = {
+            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
+            username: "FVE1WebApp",
+            password: "mmVHNn6bSLZ59Tw", 
+            connectTimeout: 5000,
+            keepalive: 60,
+            clean: true
+        };
+
+        const client = mqtt.connect(EMQX_BROKER_URL, options);
+
+        client.on('connect', () => {
+            document.getElementById("status-text").innerText = "Online";
+            document.getElementById("pod").style.backgroundColor = "#00ff00";
+
+            client.subscribe("fve/mereni/totalEnergy");
+            client.subscribe("fve/mereni/actualMonthEnergy");
+            client.subscribe("fve/mereni/realPower");
+            client.subscribe("fve/mereni/fvePower");
+            client.subscribe("fve/mereni/dailyEnergy");
+            client.subscribe("fve/stav/rele1");
+            client.subscribe("fve/stav/rele2");
+        });
+
+        client.on('error', (err) => {
+            document.getElementById("status-text").innerText = "Chyba sítě";
+            document.getElementById("pod").style.backgroundColor = "#ff2d55";
+        });
+
+        client.on('offline', () => {
+            document.getElementById("status-text").innerText = "Odpojeno";
+            document.getElementById("pod").style.backgroundColor = "#ff2d55";
+        });
+
+        client.on('message', (topic, message) => {
+            const payload = message.toString();
+
+            if (topic === "fve/mereni/totalEnergy") {
+                document.getElementById("totalEnergy").innerText = payload + " kWh";
+            } 
+            else if (topic === "fve/mereni/actualMonthEnergy") {
+                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
+            } 
+            else if (topic === "fve/mereni/realPower") {
+                document.getElementById("realPower").innerText = payload + " W";
+            } 
+            else if (topic === "fve/mereni/fvePower") {
+                document.getElementById("fvePower").innerText = payload + " W";
+                const maxVykon = 1350; 
+                const ciselnaHodnota = parseFloat(payload) || 0;
+                let procento = (ciselnaHodnota / maxVykon) * 100;
+                if (procento > 100) procento = 100; 
+                document.getElementById("fvePowerBargraf").style.width = procento + "%";
+            } 
+            else if (topic === "fve/mereni/dailyEnergy") {
+                document.getElementById("dailyEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/stav/rele1") {
+                document.getElementById("icon-rele1").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
+            } 
+            else if (topic === "fve/stav/rele2") {
+                document.getElementById("icon-rele2").classList.toggle("off", payload === "0" || payload.toUpperCase() === "OFF");
+            }
+        });
+
+        function provedNulovani() {
+            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
+                if (client.connected) {
+                    client.publish("fve/prikazy", "reset_day");
+                } else {
+                    alert("Aplikace není připojena k brokeru!");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
