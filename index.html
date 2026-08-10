@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FVE Kontrolní Panel</title>
+    <title>FVE Kontrolní Panel – debug</title>
 
-    <!-- MUSÍ být před vlastním <script> kódem -->
+    <!-- MQTT.js z CDN – MUSÍ zůstat přesně takhle -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
     <style>
@@ -254,7 +254,6 @@
             </div>
         </header>
 
-        <!-- Hlavní výkon FV -->
         <div class="glass-card">
             <div class="power-section">
                 <div class="power-title">Aktuální výkon FVE</div>
@@ -272,7 +271,6 @@
             </div>
         </div>
 
-        <!-- Ostatní hodnoty -->
         <div class="glass-card">
             <div class="topics-grid">
                 <div class="topic-card">
@@ -294,9 +292,136 @@
             </div>
         </div>
 
-        <!-- Panely a nulování -->
         <div class="glass-card">
             <div class="panels-section">
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 
+                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm20-20a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm-34 0a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm26.728-11.728a3 3 0 0 1 0 4.243l-2.828 2.829a3 3 0 0 1-4.243-4.243l2.829-2.829a3 3 0 0 1 4.242 0zm-22.627 22.627a3 3 0 0 1 0 4.243l-2.829 2.829a3 3 0 0 1-4.242-4.243l2.828-2.829a3 3 0 0 1 4.243 0zm22.627 2.829a3 3 0 0 1-4.243 0l-2.829-2.829a3 3 0 0 1 4.243-4.243l2.829 2.829a3 3 0 0 1 0 4.243zm-22.627-22.627a3 3 0 0 1-4.243 0l-2.828-2.829a3 3 0 0 1 4.242-4.243l2.829 2.829a3 3 0 0 1 0 4.243z"/>
+                    </svg>
+                    <div class="panel-label">FV panely 1</div>
+                </div>
+
+                <div class="panel-wrapper">
+                    <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
+                        <path d="M32 18a14 14 0 1 0 14 14A14.016 14.016 0 0 0 32 18zm0-10a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm0 42a3 3 0 0 1 3 3v4a3 3 0 0 1-6 0v-4a3 3 0 0 1 3-3zm20-20a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm-34 0a3 3 0 0 1-3 3h-4a3 3 0 0 1 0-6h4a3 3 0 0 1 3 3zm26.728-11.728a3 3 0 0 1 0 4.243l-2.828 2.829a3 3 0 0 1-4.243-4.243l2.829-2.829a3 3 0 0 1 4.242 0zm-22.627 22.627a3 3 0 0 1 0 4.243l-2.829 2.829a3 3 0 0 1-4.242-4.243l2.828-2.829a3 3 0 0 1 4.243 0zm22.627 2.829a3 3 0 0 1-4.243 0l-2.829-2.829a3 3 0 0 1 4.243-4.243l2.829 2.829a3 3 0 0 1 0 4.243zm-22.627-22.627a3 3 0 0 1-4.243 0l-2.828-2.829a3 3 0 0 1 4.242-4.243l2.829 2.829a3 3 0 0 1 0 4.243z"/>
+                    </svg>
+                    <div class="panel-label">FV panely 2</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 16px;">
+                <button class="btn-reset" onclick="provedNulovani()">✓ Nulování denní výroby</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // DEBUG: co je v mqtt objektu
+        console.log("mqtt typeof:", typeof mqtt);
+        console.log("mqtt:", mqtt);
+
+        // Některé bundly mají vše v mqtt.default
+        const mqttLib = mqtt && mqtt.default ? mqtt.default : mqtt;
+        console.log("mqttLib typeof:", typeof mqttLib);
+        console.log("mqttLib:", mqttLib);
+
+        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
+
+        const options = {
+            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
+            username: "FVE1WebApp",
+            password: "mmVHNn6bSLZ59Tw",
+            connectTimeout: 5000,
+            keepalive: 60,
+            clean: true
+        };
+
+        console.log("Volám mqttLib.connect na:", EMQX_BROKER_URL, "s options:", options);
+        const client = mqttLib.connect(EMQX_BROKER_URL, options);
+
+        client.on('connect', () => {
+            console.log("EVENT: connect");
+            document.getElementById("status-text").innerText = "Online";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#00ff88";
+            dot.style.boxShadow = "0 0 8px #00ff88";
+
+            client.subscribe("fve/mereni/totalEnergy");
+            client.subscribe("fve/mereni/actualMonthEnergy");
+            client.subscribe("fve/mereni/realPower");
+            client.subscribe("fve/mereni/fvePower");
+            client.subscribe("fve/mereni/dailyEnergy");
+            client.subscribe("fve/stav/rele1");
+            client.subscribe("fve/stav/rele2");
+        });
+
+        client.on('error', (err) => {
+            console.error("EVENT: error", err);
+            document.getElementById("status-text").innerText = "Chyba sítě";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff2d55";
+            dot.style.boxShadow = "0 0 8px #ff2d55";
+        });
+
+        client.on('offline', () => {
+            console.warn("EVENT: offline");
+            document.getElementById("status-text").innerText = "Odpojeno";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff2d55";
+            dot.style.boxShadow = "0 0 8px #ff2d55";
+        });
+
+        client.on('reconnect', () => {
+            console.log("EVENT: reconnect");
+            document.getElementById("status-text").innerText = "Připojování...";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff9f43";
+            dot.style.boxShadow = "0 0 8px #ff9f43";
+        });
+
+        client.on('message', (topic, message) => {
+            const payload = message.toString();
+            console.log("EVENT: message", topic, payload);
+
+            if (topic === "fve/mereni/totalEnergy") {
+                document.getElementById("totalEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/mereni/actualMonthEnergy") {
+                document.getElementById("actualMonthEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/mereni/realPower") {
+                document.getElementById("realPower").innerText = payload + " W";
+            }
+            else if (topic === "fve/mereni/fvePower") {
+                document.getElementById("fvePower").innerText = payload;
+                const maxVykon = 1350;
+                const ciselnaHodnota = parseFloat(payload) || 0;
+                let procento = (ciselnaHodnota / maxVykon) * 100;
+                if (procento > 100) procento = 100;
+                document.getElementById("fvePowerBargraf").style.width = procento + "%";
+            }
+            else if (topic === "fve/mereni/dailyEnergy") {
+                document.getElementById("dailyEnergy").innerText = payload + " kWh";
+            }
+            else if (topic === "fve/stav/rele1") {
+                const on = !(payload === "0" || payload.toUpperCase() === "OFF");
+                document.getElementById("icon-rele1").classList.toggle("off", !on);
+            }
+            else if (topic === "fve/stav/rele2") {
+                const on = !(payload === "0" || payload.toUpperCase() === "OFF");
+                document.getElementById("icon-rele2").classList.toggle("off", !on);
+            }
+        });
+
+        function provedNulovani() {
+            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
+                if (client.connected) {
+                    client.publish("fve/prikazy", "reset_day");
+                } else {
+                    alert("Aplikace není připojena k brokeru!");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
