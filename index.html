@@ -203,21 +203,22 @@
             flex: 1;
         }
 
+        /* PŮVODNÍ PANELOVÉ IKONY – barva podle .off */
         .solar-icon {
-            width: 50px;
-            height: 50px;
+            width: 46px;
+            height: 46px;
             transition: all 0.3s ease;
-            filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.5));
+            filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
         }
-        .solar-icon .panel {
-            fill: #065f46;
-        }
+        /* základní panel – zelený */
+        .solar-icon .panel,
         .solar-icon .cell {
             fill: #16a34a;
         }
         .solar-icon .sun {
             fill: #facc15;
         }
+        /* OFF – zšednout */
         .solar-icon.off {
             filter: none;
         }
@@ -359,13 +360,14 @@
             </div>
         </div>
 
-        <!-- 4) Panely + Denní výroba + nulování -->
+        <!-- 4) FV panely + Denní výroba + nulování -->
         <div class="glass-card">
             <div class="panels-section">
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <circle class="sun" cx="50" cy="14" r="5"/>
+                        <circle class="sun" cx="49" cy="15" r="5"/>
                         <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
+                        <!-- mřížka: 3x3 -->
                         <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
@@ -383,7 +385,7 @@
 
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
-                        <circle class="sun" cx="50" cy="14" r="5"/>
+                        <circle class="sun" cx="49" cy="15" r="5"/>
                         <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
                         <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
@@ -489,7 +491,7 @@
         // --- GRAF DENNÍHO VÝKONU ---
 
         let chartData = []; // { t: timestamp_ms, v: výkon_W }
-        const SAMPLE_INTERVAL_MS = 60 * 1000; // 1 min
+        const SAMPLE_INTERVAL_MS = 60 * 1000;
         let lastSampleTime = 0;
 
         function todayKey() {
@@ -527,18 +529,14 @@
             }
         }
 
-        // jen den – např.7:00 až 18:00 místního času
         function isDaytime() {
             const now = new Date();
             const h = now.getHours();
-            return h >= 7 && h < 18;
+            return h >= 6 && h < 21;
         }
 
         function addChartSample(value) {
-            if (!isDaytime()) {
-                // v noci negenerujeme nová data do grafu
-                return;
-            }
+            if (!isDaytime()) return;
 
             const now = Date.now();
 
@@ -661,7 +659,6 @@
                 if (procento > 100) procento = 100;
                 document.getElementById("fvePowerBargraf").style.width = procento + "%";
 
-                // do denního grafu logujeme jen přes den
                 addChartSample(ciselnaHodnota);
             }
             else if (topic === "fve/mereni/dailyEnergy") {
@@ -669,11 +666,13 @@
             }
             else if (topic === "fve/stav/rele1") {
                 const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                document.getElementById("icon-rele1").classList.toggle("off", !on);
+                const el = document.getElementById("icon-rele1");
+                el.classList.toggle("off", !on);
             }
             else if (topic === "fve/stav/rele2") {
                 const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                document.getElementById("icon-rele2").classList.toggle("off", !on);
+                const el = document.getElementById("icon-rele2");
+                el.classList.toggle("off", !on);
             }
         });
 
