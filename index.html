@@ -97,7 +97,6 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
         }
 
-        /* Vyrobeno celkem – první karta */
         .total-card {
             display: flex;
             flex-direction: column;
@@ -115,7 +114,6 @@
             color: #e5e7eb;
         }
 
-        /* Hlavní výkon */
         .power-section {
             text-align: center;
             display: flex;
@@ -288,7 +286,6 @@
             font-size: 0.9rem;
         }
 
-        /* Graf – karta pod výkonem, jednoduchý canvas */
         .chart-card {
             padding-top: 10px;
         }
@@ -428,7 +425,7 @@
             });
         }
 
-        // MQTT knihovna (podpora jak mqtt.default, tak mqtt)
+        // MQTT knihovna
         window.mqttLib = (window.mqtt && window.mqtt.default) ? window.mqtt.default : window.mqtt;
 
         const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
@@ -458,7 +455,6 @@
             client.subscribe("fve/stav/rele1");
             client.subscribe("fve/stav/rele2");
 
-            // po připojení zkus načíst uložená denní data pro graf
             loadChartDataForToday();
             redrawChart();
         });
@@ -492,9 +488,8 @@
 
         // --- GRAF DENNÍHO VÝKONU ---
 
-        // data ve formátu { t: timestamp_ms, v: výkon_W }
-        let chartData = [];
-        const SAMPLE_INTERVAL_MS = 60 * 1000; // 1 minuta
+        let chartData = []; // { t: timestamp_ms, v: výkon_W }
+        const SAMPLE_INTERVAL_MS = 60 * 1000; // 1 min
         let lastSampleTime = 0;
 
         function todayKey() {
@@ -513,6 +508,9 @@
                     const arr = JSON.parse(raw);
                     if (Array.isArray(arr)) {
                         chartData = arr;
+                        if (chartData.length) {
+                            lastSampleTime = chartData[chartData.length - 1].t;
+                        }
                     }
                 }
             } catch (e) {
@@ -529,12 +527,22 @@
             }
         }
 
+        // jen den – např.7:00 až 18:00 místního času
+        function isDaytime() {
+            const now = new Date();
+            const h = now.getHours();
+            return h >= 7 && h < 18;
+        }
+
         function addChartSample(value) {
+            if (!isDaytime()) {
+                // v noci negenerujeme nová data do grafu
+                return;
+            }
+
             const now = Date.now();
 
-            // nová data jen když uplynula aspoň minuta
             if (now - lastSampleTime < SAMPLE_INTERVAL_MS && chartData.length > 0) {
-                // ale přece jen aktualizujeme poslední bod na aktuální hodnotu (jemné zpřesnění)
                 chartData[chartData.length - 1].v = value;
                 saveChartDataForToday();
                 redrawChart();
@@ -558,14 +566,12 @@
             const height = 140;
             canvas.width = width * dpr;
             canvas.height = height * dpr;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // reset scale
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
             ctx.clearRect(0, 0, width, height);
 
-            // Osa X (čas), Y (výkon)
             ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
             ctx.lineWidth = 1;
-            // baseline
             const baselineY = height - 20;
             ctx.beginPath();
             ctx.moveTo(0, baselineY);
@@ -588,10 +594,8 @@
             const innerTop = 10;
             const innerBottom = baselineY - 5;
             const usableHeight = innerBottom - innerTop;
-
             const totalTimeSpan = maxT - minT || 1;
 
-            // čára
             ctx.beginPath();
             ctx.strokeStyle = '#22c55e';
             ctx.lineWidth = 2;
@@ -607,7 +611,6 @@
             });
             ctx.stroke();
 
-            // body
             ctx.fillStyle = '#4ade80';
             chartData.forEach(point => {
                 const timeRatio = (point.t - minT) / totalTimeSpan;
@@ -619,10 +622,8 @@
                 ctx.fill();
             });
 
-            // jednoduché popisky max výkonu a času (začátek / konec)
             ctx.fillStyle = '#64748b';
             ctx.font = '9px system-ui';
-
             ctx.fillText(`Max: ${Math.round(maxV)} W`, 6, innerTop + 10);
 
             const start = new Date(minT);
@@ -660,7 +661,7 @@
                 if (procento > 100) procento = 100;
                 document.getElementById("fvePowerBargraf").style.width = procento + "%";
 
-                // přidat / aktualizovat vzorek pro denní graf
+                // do denního grafu logujeme jen přes den
                 addChartSample(ciselnaHodnota);
             }
             else if (topic === "fve/mereni/dailyEnergy") {
@@ -686,7 +687,6 @@
             }
         }
 
-        // při změně velikosti okna překresli graf
         window.addEventListener('resize', () => {
             redrawChart();
         });
