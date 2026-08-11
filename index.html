@@ -10,7 +10,7 @@
     <meta name="description" content="Kontrolní panel FVE 1 – přehled výroby, spotřeby a stav panelů.">
     <link rel="manifest" href="/FVE/manifest.webmanifest">
     <link rel="icon" sizes="192x192" href="/FVE/icon-192.png">
-    
+
     <!-- MQTT.js z CDN -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
@@ -301,7 +301,7 @@
         }
         #dailyChart {
             width: 100%;
-            height: 120px;
+            height: 140px;
             display: block;
         }
     </style>
@@ -344,9 +344,9 @@
             </div>
         </div>
 
-        <!-- 2b) Graf denní výroby / výkonu -->
+        <!-- 2b) Graf denního výkonu -->
         <div class="glass-card chart-card">
-            <div class="chart-title">Denní výkon FVE (poslední minuty)</div>
+            <div class="chart-title">Denní výkon FVE</div>
             <canvas id="dailyChart"></canvas>
         </div>
 
@@ -457,6 +457,10 @@
             client.subscribe("fve/mereni/dailyEnergy");
             client.subscribe("fve/stav/rele1");
             client.subscribe("fve/stav/rele2");
+
+            // po připojení zkus načíst uložená denní data pro graf
+            loadChartDataForToday();
+            redrawChart();
         });
 
         client.on('error', () => {
@@ -486,69 +490,150 @@
             return Math.round(n).toString();
         }
 
-        // jednoduchý graf – ukladáme posledních N hodnot výkonu
-        const chartMaxPoints = 60; // třeba posledních 60 vzorků
-        const chartData = [];
+        // --- GRAF DENNÍHO VÝKONU ---
 
-        function updateChart(newValue) {
+        // data ve formátu { t: timestamp_ms, v: výkon_W }
+        let chartData = [];
+        const SAMPLE_INTERVAL_MS = 60 * 1000; // 1 minuta
+        let lastSampleTime = 0;
+
+        function todayKey() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `fve1_daily_power_${y}-${m}-${day}`;
+        }
+
+        function loadChartDataForToday() {
+            try {
+                const key = todayKey();
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) {
+                        chartData = arr;
+                    }
+                }
+            } catch (e) {
+                console.log("Nelze načíst chartData:", e);
+            }
+        }
+
+        function saveChartDataForToday() {
+            try {
+                const key = todayKey();
+                localStorage.setItem(key, JSON.stringify(chartData));
+            } catch (e) {
+                console.log("Nelze uložit chartData:", e);
+            }
+        }
+
+        function addChartSample(value) {
+            const now = Date.now();
+
+            // nová data jen když uplynula aspoň minuta
+            if (now - lastSampleTime < SAMPLE_INTERVAL_MS && chartData.length > 0) {
+                // ale přece jen aktualizujeme poslední bod na aktuální hodnotu (jemné zpřesnění)
+                chartData[chartData.length - 1].v = value;
+                saveChartDataForToday();
+                redrawChart();
+                return;
+            }
+
+            lastSampleTime = now;
+            chartData.push({ t: now, v: value });
+            saveChartDataForToday();
+            redrawChart();
+        }
+
+        function redrawChart() {
             const canvas = document.getElementById('dailyChart');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
-            // velikost canvasu podle aktuální šířky
             const dpr = window.devicePixelRatio || 1;
-            const width = canvas.clientWidth;
-            const height = 120;
+            const width = canvas.clientWidth || 300;
+            const height = 140;
             canvas.width = width * dpr;
             canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // reset scale
 
             ctx.clearRect(0, 0, width, height);
 
-            // osu X a Y
+            // Osa X (čas), Y (výkon)
             ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
             ctx.lineWidth = 1;
             // baseline
+            const baselineY = height - 20;
             ctx.beginPath();
-            ctx.moveTo(0, height - 15);
-            ctx.lineTo(width, height - 15);
+            ctx.moveTo(0, baselineY);
+            ctx.lineTo(width, baselineY);
             ctx.stroke();
 
-            if (chartData.length === 0) return;
+            if (!chartData.length) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px system-ui';
+                ctx.fillText('Žádná data pro dnešní den', 10, height / 2);
+                return;
+            }
 
-            const maxVal = Math.max(...chartData, 1); // aby nedošlo k dělení nulou
-            const minVal = 0;
+            const times = chartData.map(d => d.t);
+            const values = chartData.map(d => d.v);
+            const minT = Math.min(...times);
+            const maxT = Math.max(...times);
+            const maxV = Math.max(...values, 1);
 
-            const usableHeight = height - 25; // nahoře trochu místa
-            const stepX = width / Math.max(chartData.length - 1, 1);
+            const innerTop = 10;
+            const innerBottom = baselineY - 5;
+            const usableHeight = innerBottom - innerTop;
+
+            const totalTimeSpan = maxT - minT || 1;
 
             // čára
             ctx.beginPath();
             ctx.strokeStyle = '#22c55e';
             ctx.lineWidth = 2;
 
-            chartData.forEach((val, idx) => {
-                const x = idx * stepX;
-                const norm = (val - minVal) / (maxVal - minVal || 1);
-                const y = usableHeight - norm * usableHeight + 5; // +5 trochu posun nahoru
+            chartData.forEach((point, idx) => {
+                const timeRatio = (point.t - minT) / totalTimeSpan;
+                const x = timeRatio * (width - 10) + 5;
+                const norm = point.v / maxV;
+                const y = innerBottom - norm * usableHeight;
 
                 if (idx === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             });
-
             ctx.stroke();
 
-            // malé body
+            // body
             ctx.fillStyle = '#4ade80';
-            chartData.forEach((val, idx) => {
-                const x = idx * stepX;
-                const norm = (val - minVal) / (maxVal - minVal || 1);
-                const y = usableHeight - norm * usableHeight + 5;
+            chartData.forEach(point => {
+                const timeRatio = (point.t - minT) / totalTimeSpan;
+                const x = timeRatio * (width - 10) + 5;
+                const norm = point.v / maxV;
+                const y = innerBottom - norm * usableHeight;
                 ctx.beginPath();
                 ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fill();
             });
+
+            // jednoduché popisky max výkonu a času (začátek / konec)
+            ctx.fillStyle = '#64748b';
+            ctx.font = '9px system-ui';
+
+            ctx.fillText(`Max: ${Math.round(maxV)} W`, 6, innerTop + 10);
+
+            const start = new Date(minT);
+            const end = new Date(maxT);
+            const pad = n => String(n).padStart(2, '0');
+            const startText = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+            const endText = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+
+            ctx.fillText(startText, 6, height - 6);
+            const endWidth = ctx.measureText(endText).width;
+            ctx.fillText(endText, width - endWidth - 6, height - 6);
         }
 
         client.on('message', (topic, message) => {
@@ -575,10 +660,8 @@
                 if (procento > 100) procento = 100;
                 document.getElementById("fvePowerBargraf").style.width = procento + "%";
 
-                // přidat do dat pro graf
-                chartData.push(ciselnaHodnota);
-                if (chartData.length > chartMaxPoints) chartData.shift();
-                updateChart(ciselnaHodnota);
+                // přidat / aktualizovat vzorek pro denní graf
+                addChartSample(ciselnaHodnota);
             }
             else if (topic === "fve/mereni/dailyEnergy") {
                 document.getElementById("dailyEnergy").innerText = payloadRaw + " kWh";
@@ -603,11 +686,9 @@
             }
         }
 
-        // při změně velikosti okna překresli graf (kvůli šířce)
+        // při změně velikosti okna překresli graf
         window.addEventListener('resize', () => {
-            if (chartData.length) {
-                updateChart(chartData[chartData.length - 1]);
-            }
+            redrawChart();
         });
     </script>
 </body>
