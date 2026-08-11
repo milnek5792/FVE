@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FVE Kontrolní Panel</title>
 
+    <!-- PWA meta -->
+    <meta name="theme-color" content="#030712">
+    <meta name="description" content="Kontrolní panel FVE 1 – přehled výroby, spotřeby a stav panelů.">
+    <link rel="manifest" href="manifest.webmanifest">
+
+    <!-- Ikona pro PWA (můžeš si později nahradit vlastní) -->
+    <link rel="icon" sizes="192x192" href="icon-192.png">
+
     <!-- MQTT.js z CDN -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 
@@ -205,11 +213,9 @@
             transition: all 0.3s ease;
             filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.5));
         }
-        /* panel – tmavý rámeček */
         .solar-icon .panel {
-            fill: #065f46; /* velmi tmavě zelená */
+            fill: #065f46;
         }
-        /* buňky – světlejší zelená, aby byla mřížka vidět */
         .solar-icon .cell {
             fill: #16a34a;
         }
@@ -283,6 +289,23 @@
         .btn-reset span.icon {
             font-size: 0.9rem;
         }
+
+        /* Graf – karta pod výkonem, jednoduchý canvas */
+        .chart-card {
+            padding-top: 10px;
+        }
+        .chart-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        #dailyChart {
+            width: 100%;
+            height: 120px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -323,6 +346,12 @@
             </div>
         </div>
 
+        <!-- 2b) Graf denní výroby / výkonu -->
+        <div class="glass-card chart-card">
+            <div class="chart-title">Denní výkon FVE (poslední minuty)</div>
+            <canvas id="dailyChart"></canvas>
+        </div>
+
         <!-- 3) Měsíční výroba + spotřeba domu -->
         <div class="glass-card">
             <div class="topic-row">
@@ -340,24 +369,17 @@
             <div class="panels-section">
                 <div class="panel-wrapper">
                     <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
-                        <!-- slunce -->
                         <circle class="sun" cx="50" cy="14" r="5"/>
-                        <!-- panel základ -->
                         <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
-                        <!-- mřížka: 3 sloupce × 3 řady -->
-                        <!-- řada 1 -->
                         <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
-                        <!-- řada 2 -->
                         <rect class="cell" x="8"  y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="30" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="30" width="10" height="7" rx="1" ry="1"/>
-                        <!-- řada 3 -->
                         <rect class="cell" x="8"  y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="19" y="38" width="10" height="7" rx="1" ry="1"/>
                         <rect class="cell" x="30" y="38" width="10" height="7" rx="1" ry="1"/>
-                        <!-- nožky panelu -->
                         <rect class="panel" x="13" y="48" width="4" height="4"/>
                         <rect class="panel" x="31" y="48" width="4" height="4"/>
                     </svg>
@@ -399,6 +421,15 @@
     </div>
 
     <script type="text/javascript">
+        // PWA – registrace service workeru
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(err => {
+                    console.log('SW registrace selhala:', err);
+                });
+            });
+        }
+
         // MQTT knihovna (podpora jak mqtt.default, tak mqtt)
         window.mqttLib = (window.mqtt && window.mqtt.default) ? window.mqtt.default : window.mqtt;
 
@@ -457,6 +488,71 @@
             return Math.round(n).toString();
         }
 
+        // jednoduchý graf – ukladáme posledních N hodnot výkonu
+        const chartMaxPoints = 60; // třeba posledních 60 vzorků
+        const chartData = [];
+
+        function updateChart(newValue) {
+            const canvas = document.getElementById('dailyChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // velikost canvasu podle aktuální šířky
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.clientWidth;
+            const height = 120;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            ctx.clearRect(0, 0, width, height);
+
+            // osu X a Y
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+            ctx.lineWidth = 1;
+            // baseline
+            ctx.beginPath();
+            ctx.moveTo(0, height - 15);
+            ctx.lineTo(width, height - 15);
+            ctx.stroke();
+
+            if (chartData.length === 0) return;
+
+            const maxVal = Math.max(...chartData, 1); // aby nedošlo k dělení nulou
+            const minVal = 0;
+
+            const usableHeight = height - 25; // nahoře trochu místa
+            const stepX = width / Math.max(chartData.length - 1, 1);
+
+            // čára
+            ctx.beginPath();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+
+            chartData.forEach((val, idx) => {
+                const x = idx * stepX;
+                const norm = (val - minVal) / (maxVal - minVal || 1);
+                const y = usableHeight - norm * usableHeight + 5; // +5 trochu posun nahoru
+
+                if (idx === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+
+            ctx.stroke();
+
+            // malé body
+            ctx.fillStyle = '#4ade80';
+            chartData.forEach((val, idx) => {
+                const x = idx * stepX;
+                const norm = (val - minVal) / (maxVal - minVal || 1);
+                const y = usableHeight - norm * usableHeight + 5;
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
         client.on('message', (topic, message) => {
             const payloadRaw = message.toString();
 
@@ -480,6 +576,11 @@
                 let procento = (ciselnaHodnota / maxVykon) * 100;
                 if (procento > 100) procento = 100;
                 document.getElementById("fvePowerBargraf").style.width = procento + "%";
+
+                // přidat do dat pro graf
+                chartData.push(ciselnaHodnota);
+                if (chartData.length > chartMaxPoints) chartData.shift();
+                updateChart(ciselnaHodnota);
             }
             else if (topic === "fve/mereni/dailyEnergy") {
                 document.getElementById("dailyEnergy").innerText = payloadRaw + " kWh";
@@ -503,6 +604,13 @@
                 }
             }
         }
+
+        // při změně velikosti okna překresli graf (kvůli šířce)
+        window.addEventListener('resize', () => {
+            if (chartData.length) {
+                updateChart(chartData[chartData.length - 1]);
+            }
+        });
     </script>
 </body>
 </html>
