@@ -665,15 +665,16 @@
                 document.getElementById("dailyEnergy").innerText = payloadRaw + " kWh";
             }
             else if (topic === "fve/stav/rele1") {
-                const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                const el = document.getElementById("icon-rele1");
-                el.classList.toggle("off", !on);
-            }
-            else if (topic === "fve/stav/rele2") {
-                const on = !(payloadRaw === "0" || payloadRaw.toUpperCase() === "OFF");
-                const el = document.getElementById("icon-rele2");
-                el.classList.toggle("off", !on);
-            }
+            // payload: "true" / "false"
+              const on = (payloadRaw.toLowerCase() === "true");
+             const el = document.getElementById("icon-rele1");
+            el.classList.toggle("off", !on);
+          }
+       else if (topic === "fve/stav/rele2") {
+        const on = (payloadRaw.toLowerCase() === "true");
+         const el = document.getElementById("icon-rele2");
+         el.classList.toggle("off", !on);
+          }
         });
 
         function provedNulovani() {
