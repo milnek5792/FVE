@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <!-- build v2026-08-11-01 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FVE Kontrolní Panel</title>
+
+    <!-- PWA meta -->
+    <meta name="theme-color" content="#030712">
+    <meta name="description" content="Kontrolní panel FVE 1 – přehled výroby, spotřeby a stav panelů.">
+    <link rel="manifest" href="/FVE/manifest.webmanifest">
+    <link rel="icon" sizes="192x192" href="/FVE/icon-192.png">
+
+    <!-- MQTT.js z CDN -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <style>
+        :root {
+            --primary-glow: rgba(0, 242, 254, 0.15);
+            --secondary-glow: rgba(79, 172, 254, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #030712;
+            background-image:
+                radial-gradient(circle at 10% 20%, var(--primary-glow) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, var(--secondary-glow) 0%, transparent 40%);
+            background-attachment: fixed;
+            color: #f1f5f9;
+            min-height: 100vh;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 430px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        header {
+            margin-bottom: 6px;
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.3px;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        .status-dot {
+            width: 9px;
+            height: 9px;
+            background-color: #ff9f43;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px #ff9f43;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 14px;
+            padding: 12px 13px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+        }
+
+        .total-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .total-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+        }
+        .total-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e5e7eb;
+        }
+
+        .power-section {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .power-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+        }
+        .power-value {
+            font-size: 2.3rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 3px;
+        }
+        .power-unit {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #4facfe;
+        }
+        .bargraf-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            margin-top: 4px;
+        }
+        .bargraf-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+            border-radius: 5px;
+            transition: width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .bargraf-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 2px;
+            padding: 0 1px;
+        }
+
+        .topic-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+        }
+        .topic-row:last-child {
+            border-bottom: none;
+        }
+        .topic-label {
+            font-size: 0.78rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .topic-val {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #e5e7eb;
+        }
+
+        .panels-section {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 12px;
+        }
+        .panel-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+        }
+
+        /* Panelové ikony – barva podle .off */
+        .solar-icon {
+            width: 46px;
+            height: 46px;
+            transition: all 0.3s ease;
+            filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
+        }
+        .solar-icon .panel,
+        .solar-icon .cell {
+            fill: #16a34a; /* zelená ON */
+        }
+        .solar-icon .sun {
+            fill: #facc15;
+        }
+        .solar-icon.off {
+            filter: none;
+        }
+        .solar-icon.off .panel,
+        .solar-icon.off .cell {
+            fill: #4b5563; /* šedá OFF */
+        }
+        .solar-icon.off .sun {
+            fill: #6b7280;
+        }
+
+        .panel-label {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            font-weight: 500;
+        }
+
+        .bottom-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .daily-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.9rem;
+        }
+        .daily-label {
+            font-size: 0.78rem;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .daily-val {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #e5e7eb;
+        }
+
+        .btn-reset {
+            width: 100%;
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.08) 0%, rgba(185, 28, 28, 0.22) 100%);
+            border: 1px solid rgba(248, 113, 113, 0.6);
+            color: #fecaca;
+            padding: 9px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .btn-reset:active {
+            transform: scale(0.97);
+            background: linear-gradient(135deg, rgba(248, 113, 113, 0.16) 0%, rgba(185, 28, 28, 0.3) 100%);
+            border-color: rgba(248, 113, 113, 0.8);
+        }
+        .btn-reset span.icon {
+            font-size: 0.9rem;
+        }
+
+        .chart-card {
+            padding-top: 10px;
+        }
+        .chart-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        #dailyChart {
+            width: 100%;
+            height: 140px;
+            display: block;
+        }
+
+        /* Verze aplikace dole */
+        .app-version {
+            text-align: center;
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-row">
+                <div class="header-title">FVE 1</div>
+                <div class="status-bar">
+                    <span id="status-text">Připojování...</span>
+                    <span class="status-dot" id="pod"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 1) Vyrobeno celkem -->
+        <div class="glass-card">
+            <div class="total-card">
+                <div class="total-label">Vyrobeno celkem</div>
+                <div class="total-value" id="totalEnergy">-- kWh</div>
+            </div>
+        </div>
+
+        <!-- 2) Aktuální výkon FVE -->
+        <div class="glass-card">
+            <div class="power-section">
+                <div class="power-title">Aktuální výkon FVE</div>
+                <div class="power-value">
+                    <span id="fvePower">--</span>
+                    <span class="power-unit">W</span>
+                </div>
+                <div class="bargraf-container">
+                    <div class="bargraf-fill" id="fvePowerBargraf"></div>
+                </div>
+                <div class="bargraf-labels">
+                    <span>0 W</span>
+                    <span>Max</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2b) Graf denního výkonu -->
+        <div class="glass-card chart-card">
+            <div class="chart-title">Denní výkon FVE</div>
+            <canvas id="dailyChart"></canvas>
+        </div>
+
+        <!-- 3) Měsíční výroba + spotřeba domu -->
+        <div class="glass-card">
+            <div class="topic-row">
+                <div class="topic-label">Měsíční výroba</div>
+                <div class="topic-val" id="actualMonthEnergy">-- kWh</div>
+            </div>
+            <div class="topic-row">
+                <div class="topic-label">Spotřeba domu</div>
+                <div class="topic-val" id="realPower">-- W</div>
+            </div>
+        </div>
+
+        <!-- 4) FV panely + Denní výroba + nulování -->
+        <div class="glass-card">
+            <div class="panels-section">
+                <div class="panel-wrapper">
+                    <svg class="solar-icon" id="icon-rele1" viewBox="0 0 64 64">
+                        <circle class="sun" cx="49" cy="15" r="5"/>
+                        <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
+                        <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="panel" x="13" y="48" width="4" height="4"/>
+                        <rect class="panel" x="31" y="48" width="4" height="4"/>
+                    </svg>
+                    <div class="panel-label">FV panely 1</div>
+                </div>
+
+                <div class="panel-wrapper">
+                    <svg class="solar-icon" id="icon-rele2" viewBox="0 0 64 64">
+                        <circle class="sun" cx="49" cy="15" r="5"/>
+                        <rect class="panel" x="6" y="20" width="38" height="26" rx="3" ry="3"/>
+                        <rect class="cell" x="8"  y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="22" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="30" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="8"  y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="19" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="cell" x="30" y="38" width="10" height="7" rx="1" ry="1"/>
+                        <rect class="panel" x="13" y="48" width="4" height="4"/>
+                        <rect class="panel" x="31" y="48" width="4" height="4"/>
+                    </svg>
+                    <div class="panel-label">FV panely 2</div>
+                </div>
+            </div>
+
+            <div class="bottom-row">
+                <div class="daily-row">
+                    <div class="daily-label">Denní výroba</div>
+                    <div class="daily-val" id="dailyEnergy">-- kWh</div>
+                </div>
+
+                <button class="btn-reset" onclick="provedNulovani()">
+                    <span class="icon">✓</span>
+                    <span>Nulování denní výroby</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- číslo verze dole -->
+        <div class="app-version">
+            v2024-08-11-01
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // PWA – registrace service workeru
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(err => {
+                    console.log('SW registrace selhala:', err);
+                });
+            });
+        }
+
+        // MQTT knihovna
+        window.mqttLib = (window.mqtt && window.mqtt.default) ? window.mqtt.default : window.mqtt;
+
+        const EMQX_BROKER_URL = "wss://n9e16b3c.ala.eu-central-1.emqxsl.com:8084/mqtt";
+
+        const options = {
+            clientId: "fve1_pwa_" + Math.random().toString(16).substr(2, 4),
+            username: "FVE1WebApp",
+            password: "mmVHNn6bSLZ59Tw",
+            connectTimeout: 5000,
+            keepalive: 60,
+            clean: true
+        };
+
+        window.client = window.mqttLib.connect(EMQX_BROKER_URL, options);
+
+        client.on('connect', () => {
+            document.getElementById("status-text").innerText = "Online";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#00ff88";
+            dot.style.boxShadow = "0 0 6px #00ff88";
+
+            client.subscribe("fve/mereni/totalEnergy");
+            client.subscribe("fve/mereni/actualMonthEnergy");
+            client.subscribe("fve/mereni/realPower");
+            client.subscribe("fve/mereni/fvePower");
+            client.subscribe("fve/mereni/dailyEnergy");
+            client.subscribe("fve/stav/rele1");
+            client.subscribe("fve/stav/rele2");
+
+            loadChartDataForToday();
+            redrawChart();
+        });
+
+        client.on('error', () => {
+            document.getElementById("status-text").innerText = "Chyba sítě";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff2d55";
+            dot.style.boxShadow = "0 0 6px #ff2d55";
+        });
+
+        client.on('offline', () => {
+            document.getElementById("status-text").innerText = "Odpojeno";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff2d55";
+            dot.style.boxShadow = "0 0 6px #ff2d55";
+        });
+
+        client.on('reconnect', () => {
+            document.getElementById("status-text").innerText = "Připojování...";
+            const dot = document.getElementById("pod");
+            dot.style.backgroundColor = "#ff9f43";
+            dot.style.boxShadow = "0 0 6px #ff9f43";
+        });
+
+        function format0(x) {
+            const n = parseFloat(x);
+            if (isNaN(n)) return x;
+            return Math.round(n).toString();
+        }
+
+        // --- GRAF DENNÍHO VÝKONU ---
+
+        let chartData = [];
+        const SAMPLE_INTERVAL_MS = 60 * 1000;
+        let lastSampleTime = 0;
+
+        function todayKey() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `fve1_daily_power_${y}-${m}-${day}`;
+        }
+
+        function loadChartDataForToday() {
+            try {
+                const key = todayKey();
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) {
+                        chartData = arr;
+                        if (chartData.length) {
+                            lastSampleTime = chartData[chartData.length - 1].t;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log("Nelze načíst chartData:", e);
+            }
+        }
+
+        function saveChartDataForToday() {
+            try {
+                const key = todayKey();
+                localStorage.setItem(key, JSON.stringify(chartData));
+            } catch (e) {
+                console.log("Nelze uložit chartData:", e);
+            }
+        }
+
+        function isDaytime() {
+            const now = new Date();
+            const h = now.getHours();
+            return h >= 6 && h < 21;
+        }
+
+        function addChartSample(value) {
+            if (!isDaytime()) return;
+
+            const now = Date.now();
+
+            if (now - lastSampleTime < SAMPLE_INTERVAL_MS && chartData.length > 0) {
+                chartData[chartData.length - 1].v = value;
+                saveChartDataForToday();
+                redrawChart();
+                return;
+            }
+
+            lastSampleTime = now;
+            chartData.push({ t: now, v: value });
+            saveChartDataForToday();
+            redrawChart();
+        }
+
+        function redrawChart() {
+            const canvas = document.getElementById('dailyChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            const width = canvas.clientWidth || 300;
+            const height = 140;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            ctx.clearRect(0, 0, width, height);
+
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+            ctx.lineWidth = 1;
+            const baselineY = height - 20;
+            ctx.beginPath();
+            ctx.moveTo(0, baselineY);
+            ctx.lineTo(width, baselineY);
+            ctx.stroke();
+
+            if (!chartData.length) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px system-ui';
+                ctx.fillText('Žádná data pro dnešní den', 10, height / 2);
+                return;
+            }
+
+            const times = chartData.map(d => d.t);
+            const values = chartData.map(d => d.v);
+            const minT = Math.min(...times);
+            const maxT = Math.max(...times);
+            const maxV = Math.max(...values, 1);
+
+            const innerTop = 10;
+            const innerBottom = baselineY - 5;
+            const usableHeight = innerBottom - innerTop;
+            const totalTimeSpan = maxT - minT || 1;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+
+            chartData.forEach((point, idx) => {
+                const timeRatio = (point.t - minT) / totalTimeSpan;
+                const x = timeRatio * (width - 10) + 5;
+                const norm = point.v / maxV;
+                const y = innerBottom - norm * usableHeight;
+
+                if (idx === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            ctx.fillStyle = '#4ade80';
+            chartData.forEach(point => {
+                const timeRatio = (point.t - minT) / totalTimeSpan;
+                const x = timeRatio * (width - 10) + 5;
+                const norm = point.v / maxV;
+                const y = innerBottom - norm * usableHeight;
+                ctx.beginPath();
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '9px system-ui';
+            ctx.fillText(`Max: ${Math.round(maxV)} W`, 6, innerTop + 10);
+
+            const start = new Date(minT);
+            const end = new Date(maxT);
+            const pad = n => String(n).padStart(2, '0');
+            const startText = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+            const endText = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+
+            ctx.fillText(startText, 6, height - 6);
+            const endWidth = ctx.measureText(endText).width;
+            ctx.fillText(endText, width - endWidth - 6, height - 6);
+        }
+
+        client.on('message', (topic, message) => {
+            const payloadRaw = message.toString();
+
+            if (topic === "fve/mereni/totalEnergy") {
+                const v = format0(payloadRaw);
+                document.getElementById("totalEnergy").innerText = v + " kWh";
+            }
+            else if (topic === "fve/mereni/actualMonthEnergy") {
+                const v = format0(payloadRaw);
+                document.getElementById("actualMonthEnergy").innerText = v + " kWh";
+            }
+            else if (topic === "fve/mereni/realPower") {
+                const v = format0(payloadRaw);
+                document.getElementById("realPower").innerText = v + " W";
+            }
+            else if (topic === "fve/mereni/fvePower") {
+                const v = format0(payloadRaw);
+                document.getElementById("fvePower").innerText = v;
+                const maxVykon = 1350;
+                const ciselnaHodnota = parseFloat(v) || 0;
+                let procento = (ciselnaHodnota / maxVykon) * 100;
+                if (procento > 100) procento = 100;
+                document.getElementById("fvePowerBargraf").style.width = procento + "%";
+
+                addChartSample(ciselnaHodnota);
+            }
+            else if (topic === "fve/mereni/dailyEnergy") {
+                document.getElementById("dailyEnergy").innerText = payloadRaw + " kWh";
+            }
+            else if (topic === "fve/stav/rele1") {
+                // payload "true"/"false"
+                const on = (payloadRaw.toLowerCase() === "true");
+                const el = document.getElementById("icon-rele1");
+                el.classList.toggle("off", !on);
+            }
+            else if (topic === "fve/stav/rele2") {
+                const on = (payloadRaw.toLowerCase() === "true");
+                const el = document.getElementById("icon-rele2");
+                el.classList.toggle("off", !on);
+            }
+        });
+
+        function provedNulovani() {
+            if (confirm("Opravdu chcete provést nulování denní výroby?")) {
+                if (client.connected) {
+                    client.publish("fve/prikazy", "reset_day");
+                } else {
+                    alert("Aplikace není připojena k brokeru!");
+                }
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            redrawChart();
+        });
+    </script>
+</body>
+</html>

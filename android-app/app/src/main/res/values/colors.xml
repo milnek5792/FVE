@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#030712</color>
+    <color name="panel">#E00F172A</color>
+    <color name="border">#4794A3B8</color>
+    <color name="text">#F1F5F9</color>
+    <color name="muted">#94A3B8</color>
+    <color name="accent">#00F2FE</color>
+    <color name="accent2">#4FACFE</color>
+    <color name="ok">#00FF88</color>
+    <color name="warn">#FF9F43</color>
+    <color name="fault">#FF2D55</color>
+    <color name="reset_text">#FECACA</color>
+    <color name="reset_border">#99F87171</color>
+    <color name="chart_axis">#6694A3B8</color>
+    <color name="chart_line">#22C55E</color>
+    <color name="chart_dot">#4ADE80</color>
+    <color name="panel_on">#16A34A</color>
+    <color name="panel_off">#4B5563</color>
+    <color name="sun_on">#FACC15</color>
+    <color name="sun_off">#6B7280</color>
+    <color name="ic_launcher_background">#030712</color>
+    <color name="nav_bg">#0B1220</color>
+</resources>
