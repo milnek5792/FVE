@@ -132,15 +132,6 @@
                 android:textColorHint="@color/muted"
                 android:textSize="13sp" />
 
-            <TextView
-                android:id="@+id/cfgStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Odpojeno"
-                android:textColor="@color/muted"
-                android:textSize="12sp" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -170,6 +161,27 @@
                     android:text="Odpojit"
                     android:textColor="@color/text" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/cfgStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:minHeight="18dp"
+                android:text="Odpojeno"
+                android:textColor="@color/muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/diagLine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:maxLines="3"
+                android:text="…"
+                android:textColor="@color/muted"
+                android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

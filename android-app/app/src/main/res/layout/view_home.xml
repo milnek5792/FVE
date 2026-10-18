@@ -312,7 +312,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="v1.0.2 · nativní"
+            android:text="v1.0.3 · nativní"
             android:textColor="@color/muted"
             android:textSize="10sp" />
     </LinearLayout>

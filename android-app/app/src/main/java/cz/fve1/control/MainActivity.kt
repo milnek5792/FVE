@@ -167,17 +167,6 @@ class MainActivity : AppCompatActivity() {
             shape = GradientDrawable.OVAL
             setColor(color)
         }
-        binding.diagLine.text = state.diagLine
-        binding.diagLine.setTextColor(
-            ContextCompat.getColor(
-                this,
-                when (state.mqttStatus) {
-                    MqttLinkStatus.Error -> R.color.fault
-                    MqttLinkStatus.Connected -> R.color.muted
-                    else -> R.color.muted
-                },
-            ),
-        )
     }
 
     private fun renderHome(state: AppUiState) {
@@ -218,6 +207,14 @@ class MainActivity : AppCompatActivity() {
                     state.mqttConnected -> R.color.ok
                     else -> R.color.muted
                 },
+            ),
+        )
+        val diag = s.findViewById<TextView>(R.id.diagLine)
+        diag.text = state.diagLine
+        diag.setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (state.mqttStatus == MqttLinkStatus.Error) R.color.fault else R.color.muted,
             ),
         )
         s.findViewById<View>(R.id.btnConnect).isEnabled = !state.sessionActive
