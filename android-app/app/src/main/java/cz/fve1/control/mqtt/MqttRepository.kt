@@ -12,6 +12,7 @@ import cz.fve1.control.screen.TelePatch
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -25,16 +26,32 @@ sealed interface MqttEvent {
 enum class PublishResult { Ok, Fail }
 
 class MqttRepository {
-    private val listeners = AtomicReference<((MqttEvent) -> Unit)?>(null)
+    private val listeners = CopyOnWriteArrayList<(MqttEvent) -> Unit>()
     private val clientRef = AtomicReference<Mqtt3AsyncClient?>(null)
     private val prefixRef = AtomicReference("fve")
     private val userStopped = AtomicBoolean(true)
     private val sessionGen = AtomicInteger(0)
     private val lastStatus = AtomicReference(MqttLinkStatus.Idle)
+    private val lastError = AtomicReference("")
 
-    fun setListener(listener: ((MqttEvent) -> Unit)?) {
-        listeners.set(listener)
+    fun addListener(listener: (MqttEvent) -> Unit) {
+        listeners.add(listener)
+        listener(MqttEvent.Status(lastStatus.get(), lastError.get()))
     }
+
+    fun removeListener(listener: (MqttEvent) -> Unit) {
+        listeners.remove(listener)
+    }
+
+    /** @deprecated prefer addListener/removeListener */
+    fun setListener(listener: ((MqttEvent) -> Unit)?) {
+        listeners.clear()
+        if (listener != null) addListener(listener)
+    }
+
+    fun lastStatus(): MqttLinkStatus = lastStatus.get()
+    fun lastError(): String = lastError.get()
+
 
     fun isConnected(): Boolean = clientRef.get()?.state?.isConnected == true
 
@@ -193,8 +210,11 @@ class MqttRepository {
     private fun emit(event: MqttEvent) {
         if (event is MqttEvent.Status) {
             lastStatus.set(event.status)
+            lastError.set(event.error)
         }
-        listeners.get()?.invoke(event)
+        for (listener in listeners) {
+            runCatching { listener(event) }
+        }
     }
 
     private data class Endpoint(

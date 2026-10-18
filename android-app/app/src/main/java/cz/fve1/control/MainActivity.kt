@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return FveViewModel(app.settingsStore, app.mqttRepository, app.chartStore) as T
+                return FveViewModel(app.settingsStore, app.mqttRepository, app.chartSampler) as T
             }
         }
     }
@@ -167,6 +167,17 @@ class MainActivity : AppCompatActivity() {
             shape = GradientDrawable.OVAL
             setColor(color)
         }
+        binding.diagLine.text = state.diagLine
+        binding.diagLine.setTextColor(
+            ContextCompat.getColor(
+                this,
+                when (state.mqttStatus) {
+                    MqttLinkStatus.Error -> R.color.fault
+                    MqttLinkStatus.Connected -> R.color.muted
+                    else -> R.color.muted
+                },
+            ),
+        )
     }
 
     private fun renderHome(state: AppUiState) {
@@ -197,13 +208,22 @@ class MainActivity : AppCompatActivity() {
         if (!pass.isFocused) pass.setTextKeepState(state.draft.password)
         if (!prefix.isFocused) prefix.setTextKeepState(state.draft.prefix)
 
-        val status = when (state.mqttStatus) {
-            MqttLinkStatus.Connected -> "Připojeno"
-            MqttLinkStatus.Connecting -> "Připojování…"
-            MqttLinkStatus.Error -> state.mqttError.ifBlank { "Chyba" }
-            MqttLinkStatus.Idle -> "Odpojeno"
-        }
-        s.findViewById<TextView>(R.id.cfgStatus).text = status
+        val status = s.findViewById<TextView>(R.id.cfgStatus)
+        status.text = state.settingsStatus
+        status.setTextColor(
+            ContextCompat.getColor(
+                this,
+                when {
+                    state.mqttStatus == MqttLinkStatus.Error -> R.color.fault
+                    state.mqttConnected -> R.color.ok
+                    else -> R.color.muted
+                },
+            ),
+        )
+        s.findViewById<View>(R.id.btnConnect).isEnabled = !state.sessionActive
+        s.findViewById<View>(R.id.btnConnect).alpha = if (state.sessionActive) 0.45f else 1f
+        s.findViewById<View>(R.id.btnDisconnect).isEnabled = state.sessionActive
+        s.findViewById<View>(R.id.btnDisconnect).alpha = if (state.sessionActive) 1f else 0.45f
     }
 
     private fun EditText.setTextKeepState(value: String) {

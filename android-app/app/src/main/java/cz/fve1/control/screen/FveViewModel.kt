@@ -1,49 +1,117 @@
 package cz.fve1.control.screen
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.fve1.control.data.ChartPoint
-import cz.fve1.control.data.ChartStore
+import cz.fve1.control.data.ChartSampler
+import cz.fve1.control.data.MqttSettings
 import cz.fve1.control.data.SettingsStore
 import cz.fve1.control.mqtt.MqttEvent
 import cz.fve1.control.mqtt.MqttRepository
 import cz.fve1.control.mqtt.PublishResult
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 class FveViewModel(
     private val settingsStore: SettingsStore,
     private val mqtt: MqttRepository,
-    private val chartStore: ChartStore,
+    private val chartSampler: ChartSampler,
 ) : ViewModel() {
     private val _ui = MutableStateFlow(
-        AppUiState(chartPoints = chartStore.loadToday()),
+        AppUiState(chartPoints = chartSampler.snapshot()),
     )
     val ui: StateFlow<AppUiState> = _ui.asStateFlow()
 
-    private var chartData = chartStore.loadToday()
-    private var lastSampleTime = chartData.lastOrNull()?.t ?: 0L
+    private var settingsSeeded = false
+    private var foregroundConnectJob: Job? = null
+    private var diagTickJob: Job? = null
+
+    private val mqttListener: (MqttEvent) -> Unit = { event ->
+        when (event) {
+            is MqttEvent.Status -> _ui.update {
+                it.copy(
+                    mqttStatus = event.status,
+                    mqttError = event.error,
+                    mqttConnected = event.status == MqttLinkStatus.Connected || mqtt.isConnected(),
+                    sessionActive = mqtt.sessionActive(),
+                )
+            }
+            is MqttEvent.Tele -> _ui.update {
+                it.applyTele(event.patch).copy(
+                    mqttConnected = true,
+                    sessionActive = mqtt.sessionActive(),
+                )
+            }
+        }
+    }
+
+    private val chartListener: (List<ChartPoint>) -> Unit = { points ->
+        _ui.update { it.copy(chartPoints = points) }
+    }
+
+    private val appLifecycle = object : DefaultLifecycleObserver {
+        override fun onStart(owner: LifecycleOwner) {
+            // Stejné jako tlačítko Připojit — až je UI nahoře.
+            foregroundConnectJob?.cancel()
+            foregroundConnectJob = viewModelScope.launch {
+                connectFromStoredSettings(retry = true)
+            }
+        }
+    }
 
     init {
-        mqtt.setListener { event ->
-            when (event) {
-                is MqttEvent.Status -> _ui.update {
-                    it.copy(mqttStatus = event.status, mqttError = event.error)
-                }
-                is MqttEvent.Tele -> {
-                    _ui.update { it.applyTele(event.patch) }
-                    event.patch.fvePowerNum?.let { addChartSample(it) }
+        mqtt.addListener(mqttListener)
+        chartSampler.addUiListener(chartListener)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycle)
+        viewModelScope.launch {
+            settingsStore.settings.collect { s ->
+                if (settingsSeeded) return@collect
+                settingsSeeded = true
+                _ui.update { it.copy(draft = s) }
+            }
+        }
+        // Obnova diag řádku (stáří tele) i bez nových MQTT zpráv.
+        diagTickJob = viewModelScope.launch {
+            while (true) {
+                delay(1_000)
+                _ui.update {
+                    it.copy(
+                        mqttConnected = mqtt.isConnected() || it.mqttStatus == MqttLinkStatus.Connected,
+                        sessionActive = mqtt.sessionActive(),
+                        diagEpoch = System.currentTimeMillis(),
+                    )
                 }
             }
         }
-        viewModelScope.launch {
-            settingsStore.settings.collect { s ->
-                _ui.update { it.copy(draft = s) }
-            }
+    }
+
+    /** Auto-connect z úložiště — nezasahuje do rozepsaného draftu v UI. */
+    private suspend fun connectFromStoredSettings(retry: Boolean) {
+        val s = runCatching { settingsStore.settings.first() }.getOrNull() ?: return
+        if (!settingsSeeded) {
+            settingsSeeded = true
+            _ui.update { it.copy(draft = s) }
+        }
+        if (!s.autoConnect) return
+        if (s.host.isBlank() || s.user.isBlank() || s.password.isBlank()) return
+
+        mqtt.connect(s)
+        refreshSession()
+        if (!retry) return
+
+        delay(3_500)
+        if (!mqtt.isConnected() && s.autoConnect) {
+            mqtt.connect(s)
+            refreshSession()
         }
     }
 
@@ -66,9 +134,14 @@ class FveViewModel(
 
     fun connect() {
         val draft = _ui.value.draft
+        val settings = draft.copy(
+            host = MqttSettings.normalizeBrokerUrl(draft.host),
+            autoConnect = true,
+        )
         viewModelScope.launch {
-            settingsStore.save(draft.copy(autoConnect = true))
-            mqtt.connect(draft.copy(autoConnect = true))
+            settingsStore.save(settings)
+            mqtt.connect(settings)
+            refreshSession()
         }
     }
 
@@ -76,6 +149,7 @@ class FveViewModel(
         viewModelScope.launch {
             settingsStore.setAutoConnect(false)
             mqtt.disconnect()
+            refreshSession()
         }
     }
 
@@ -90,30 +164,23 @@ class FveViewModel(
         _ui.update { it.copy(toast = null) }
     }
 
-    private fun addChartSample(value: Float) {
-        if (!isDaytime()) return
-        val now = System.currentTimeMillis()
-        if (now - lastSampleTime < SAMPLE_INTERVAL_MS && chartData.isNotEmpty()) {
-            chartData[chartData.lastIndex] = ChartPoint(chartData.last().t, value)
-        } else {
-            lastSampleTime = now
-            chartData.add(ChartPoint(now, value))
+    private fun refreshSession() {
+        _ui.update {
+            it.copy(
+                sessionActive = mqtt.sessionActive(),
+                mqttConnected = mqtt.isConnected() || it.mqttStatus == MqttLinkStatus.Connected,
+                mqttStatus = mqtt.lastStatus(),
+                mqttError = mqtt.lastError(),
+            )
         }
-        chartStore.saveToday(chartData)
-        _ui.update { it.copy(chartPoints = chartData.toList()) }
-    }
-
-    private fun isDaytime(): Boolean {
-        val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return h in 6 until 21
     }
 
     override fun onCleared() {
-        mqtt.setListener(null)
+        diagTickJob?.cancel()
+        foregroundConnectJob?.cancel()
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(appLifecycle)
+        mqtt.removeListener(mqttListener)
+        chartSampler.removeUiListener(chartListener)
         super.onCleared()
-    }
-
-    companion object {
-        private const val SAMPLE_INTERVAL_MS = 60_000L
     }
 }
